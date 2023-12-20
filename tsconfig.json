@@ -1,0 +1,23 @@
+{
+	"compilerOptions": {
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"moduleResolution": "NodeNext",
+		"strict": true,
+		"module": "NodeNext",
+		"target": "esnext",
+		"lib": ["esnext", "DOM"],
+		"outDir": "dist",
+		"rootDirs": ["."],
+		"declaration": true,
+		"stripInternal": true
+	},
+	"include": [
+		"src/**/*.js", //
+		"src/**/*.ts"
+	],
+	"exclude": [
+		"node_modules/**" //
+	]
+}

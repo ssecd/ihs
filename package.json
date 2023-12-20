@@ -1,0 +1,64 @@
+{
+	"name": "@ssecd/ihs",
+	"displayName": "IHS",
+	"version": "0.0.0",
+	"description": "Indonesia Health Service Helper",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/ssecd/ihs"
+	},
+	"homepage": "https://github.com/ssecd/ihs",
+	"private": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"type": "module",
+	"scripts": {
+		"test": "vitest",
+		"build": "tsc",
+		"lint": "prettier --check . && eslint .",
+		"format": "prettier --write .",
+		"release": "changeset publish"
+	},
+	"keywords": [
+		"ihs",
+		"SatuSehat",
+		"simrs",
+		"kemkes",
+		"fasyankes"
+	],
+	"author": {
+		"name": "Habib Mustofa",
+		"email": "hm.dev7@gmail.com",
+		"url": "https://github.com/mustofa-id"
+	},
+	"license": "MIT",
+	"files": [
+		"dist"
+	],
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		"types": "./dist/index.d.ts",
+		"import": "./dist/index.js"
+	},
+	"devDependencies": {
+		"@changesets/cli": "^2.27.1",
+		"@types/node": "^20.10.5",
+		"@typescript-eslint/eslint-plugin": "^6.15.0",
+		"@typescript-eslint/parser": "^6.15.0",
+		"dotenv": "^16.3.1",
+		"eslint": "^8.56.0",
+		"eslint-config-prettier": "^9.1.0",
+		"prettier": "^3.1.1",
+		"typescript": "^5.3.3",
+		"vitest": "^1.1.0"
+	},
+	"peerDependencies": {
+		"@types/fhir": "^0.0.40"
+	},
+	"packageManager": "pnpm@8.6.1",
+	"engines": {
+		"pnpm": "^8.0.0"
+	}
+}
