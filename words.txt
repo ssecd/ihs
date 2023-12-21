@@ -1,4 +1,7 @@
+accesstoken
 fasyankes
 fhir
 kemkes
+OPTIN
+OPTOUT
 simrs
