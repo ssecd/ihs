@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { KYC, getKycSingleton } from './kyc.js';
-import { IHS } from './ihs.js';
+import IHS from './ihs.js';
 
 let kyc: KYC;
 

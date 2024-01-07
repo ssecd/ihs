@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Consent, getConsentSingleton } from './consent.js';
-import { IHS } from './ihs.js';
+import IHS from './ihs.js';
 
 let consent: Consent;
 

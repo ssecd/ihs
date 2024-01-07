@@ -26,7 +26,7 @@ const defaultBaseUrls: BaseURL = {
 	}
 } as const;
 
-export class IHS {
+export default class IHS {
 	readonly config: Readonly<IHSConfig> = {
 		mode: process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
 		clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
@@ -91,11 +91,4 @@ export class IHS {
 			])
 		});
 	}
-}
-
-let instance: IHS | undefined;
-
-export function initIHS(config?: IHSConfig): IHS {
-	if (!instance) instance = new IHS(config);
-	return instance;
 }

@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { IHS, initIHS } from './ihs.js';
+import IHS from './ihs.js';
 
 let ihs: IHS;
 
 beforeAll(() => {
-	ihs = initIHS();
+	ihs = new IHS();
 });
 
 describe('index', () => {
