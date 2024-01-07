@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { IHS, initIHS } from './index.js';
+import { IHS, initIHS } from './ihs.js';
 
 let ihs: IHS;
 

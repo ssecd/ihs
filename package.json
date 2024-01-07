@@ -36,11 +36,11 @@
 	"files": [
 		"dist"
 	],
-	"module": "./dist/index.js",
-	"types": "./dist/index.d.ts",
+	"module": "./dist/ihs.js",
+	"types": "./dist/ihs.d.ts",
 	"exports": {
-		"types": "./dist/index.d.ts",
-		"import": "./dist/index.js"
+		"types": "./dist/ihs.d.ts",
+		"import": "./dist/ihs.js"
 	},
 	"devDependencies": {
 		"@changesets/cli": "^2.27.1",
