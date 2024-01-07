@@ -1,3 +1,4 @@
+import { getConsentSingleton } from './consent.js';
 import { getKycSingleton } from './kyc.js';
 
 type Mode = 'development' | 'production';
@@ -47,26 +48,6 @@ export class IHS {
 		return authResult; // TODO: handle cache and expiration
 	}
 
-	async consent({
-		patientId,
-		...rest
-	}: {
-		patientId: string;
-		action: 'OPTIN' | 'OPTOUT';
-		agent: string;
-	}) {
-		const authResult = await this.auth();
-		const url = new URL(this.baseUrls.consent + '/Consent');
-		return fetch(url, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${authResult['access_token']}`,
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ patient_id: patientId, ...rest })
-		});
-	}
-
 	async fhir(
 		path: `/${fhir4.FhirResource['resourceType']}${string}`,
 		init?: { params?: URLSearchParams | Record<string, string> } & RequestInit
@@ -82,6 +63,11 @@ export class IHS {
 				...(request_init?.headers || {})
 			}
 		});
+	}
+
+	get consent() {
+		const instance = getConsentSingleton(this);
+		return instance;
 	}
 
 	get kyc() {
