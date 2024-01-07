@@ -26,7 +26,7 @@ const defaultBaseUrls: BaseURL = {
 } as const;
 
 export class IHS {
-	private config: IHSConfig = {
+	readonly config: Readonly<IHSConfig> = {
 		mode: process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
 		clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
 		secretKey: process.env['IHS_SECRET_KEY'] || ''
@@ -34,6 +34,7 @@ export class IHS {
 
 	constructor(private readonly userConfig?: Partial<IHSConfig>) {
 		this.config = { ...this.config, ...this.userConfig };
+		Object.freeze(this.config);
 	}
 
 	get baseUrls() {
