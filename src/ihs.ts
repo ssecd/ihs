@@ -2,9 +2,9 @@ type Mode = 'development' | 'production';
 type API = 'auth' | 'fhir' | 'consent';
 
 export interface IHSConfig {
-	clientSecret?: string;
-	secretKey?: string;
-	mode?: Mode;
+	clientSecret: string;
+	secretKey: string;
+	mode: Mode;
 }
 
 const baseUrls: Record<API, Record<Mode, string>> = {
@@ -23,16 +23,18 @@ const baseUrls: Record<API, Record<Mode, string>> = {
 } as const;
 
 export class IHS {
-	constructor(private readonly config?: IHSConfig) {}
+	constructor(private readonly config: Partial<IHSConfig>) {}
 
 	get mode(): Mode {
 		return this.config?.mode || 'development';
 	}
 
 	async auth() {
-		const clientId = this.config?.clientSecret || process.env.IHS_CLIENT_SECRET;
-		const clientSecret = this.config?.secretKey || process.env.IHS_SECRET_KEY;
-		if (!clientId || !clientSecret) throw new Error('');
+		const clientId = this.config?.clientSecret || process.env?.['IHS_CLIENT_SECRET'];
+		const clientSecret = this.config?.secretKey || process.env?.['IHS_SECRET_KEY'];
+		if (!clientId || !clientSecret) {
+			throw new Error(`Missing credentials. The "clientId" and "clientSecret" are required.`);
+		}
 
 		const url = baseUrls.auth[this.mode] + '/accesstoken?grant_type=client_credentials';
 		return fetch(url, {
@@ -53,10 +55,14 @@ export class IHS {
 		action: 'OPTIN' | 'OPTOUT';
 		agent: string;
 	}) {
+		const credentials = await this.getCredentials();
 		const url = new URL(baseUrls['consent'][this.mode] + '/Consent');
 		return fetch(url, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			headers: {
+				Authorization: `Bearer ${credentials.access_token}`,
+				'Content-Type': 'application/json'
+			},
 			body: JSON.stringify({ patient_id: patientId, ...rest })
 		});
 	}
@@ -65,22 +71,22 @@ export class IHS {
 		path: `/${fhir4.FhirResource['resourceType']}${string}`,
 		init?: { params?: URLSearchParams | Record<string, string> } & RequestInit
 	) {
-		const token = await this.getAuthToken();
+		const credentials = await this.getCredentials();
 		const { params, ...request_init } = init || {};
 		const url = new URL(baseUrls['fhir'][this.mode] + path);
 		url.search = params ? new URLSearchParams(params).toString() : url.search;
 		return fetch(url, {
 			...request_init,
 			headers: {
-				Authorization: `Bearer ${token.access_token}`,
+				Authorization: `Bearer ${credentials.access_token}`,
 				...(request_init?.headers || {})
 			}
 		});
 	}
 
-	private async getAuthToken() {
+	private async getCredentials() {
 		const response = await this.auth();
-		const token = await response.json();
-		return token; // TODO: handle cache and expiration
+		const credentials = await response.json();
+		return credentials; // TODO: handle cache and expiration
 	}
 }
