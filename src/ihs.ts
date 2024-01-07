@@ -27,7 +27,7 @@ const defaultBaseUrls: BaseURL = {
 
 export class IHS {
 	private config: IHSConfig = {
-		mode: process.env['NODE_ENV'] !== 'production' ? 'development' : process.env['NODE_ENV'],
+		mode: process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
 		clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
 		secretKey: process.env['IHS_SECRET_KEY'] || ''
 	};
