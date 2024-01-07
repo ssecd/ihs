@@ -1,5 +1,8 @@
+import { getKycSingleton } from './kyc.js';
+
 type Mode = 'development' | 'production';
-type API = 'auth' | 'fhir' | 'consent';
+type API = 'auth' | 'fhir' | 'consent' | 'kyc';
+type BaseURL = Record<Mode, Record<API, string>>;
 
 export interface IHSConfig {
 	clientSecret: string;
@@ -7,44 +10,40 @@ export interface IHSConfig {
 	mode: Mode;
 }
 
-const baseUrls: Record<API, Record<Mode, string>> = {
-	auth: {
-		development: `https://api-satusehat-dev.dto.kemkes.go.id/oauth2/v1`,
-		production: `https://api-satusehat.kemkes.go.id/oauth2/v1`
+const defaultBaseUrls: BaseURL = {
+	development: {
+		auth: `https://api-satusehat-dev.dto.kemkes.go.id/oauth2/v1`,
+		fhir: `https://api-satusehat-dev.dto.kemkes.go.id/fhir-r4/v1`,
+		consent: `https://api-satusehat-dev.dto.kemkes.go.id/consent/v1`,
+		kyc: `https://api-satusehat-dev.dto.kemkes.go.id/kyc/v1`
 	},
-	fhir: {
-		development: `https://api-satusehat-dev.dto.kemkes.go.id/fhir-r4/v1`,
-		production: `https://api-satusehat.kemkes.go.id/fhir-r4/v1`
-	},
-	consent: {
-		development: `https://api-satusehat-dev.dto.kemkes.go.id/consent/v1`,
-		production: `https://api-satusehat.kemkes.go.id/consent/v1`
+	production: {
+		auth: `https://api-satusehat.kemkes.go.id/oauth2/v1`,
+		fhir: `https://api-satusehat.kemkes.go.id/fhir-r4/v1`,
+		consent: `https://api-satusehat.kemkes.go.id/consent/v1`,
+		kyc: `https://api-satusehat.kemkes.go.id/kyc/v1`
 	}
 } as const;
 
 export class IHS {
-	constructor(private readonly config: Partial<IHSConfig>) {}
+	private config: IHSConfig = {
+		mode: process.env['NODE_ENV'] !== 'production' ? 'development' : process.env['NODE_ENV'],
+		clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
+		secretKey: process.env['IHS_SECRET_KEY'] || ''
+	};
 
-	get mode(): Mode {
-		return this.config?.mode || 'development';
+	constructor(private readonly userConfig?: Partial<IHSConfig>) {
+		this.config = { ...this.config, ...this.userConfig };
+	}
+
+	get baseUrls() {
+		return defaultBaseUrls[this.config.mode];
 	}
 
 	async auth() {
-		const clientId = this.config?.clientSecret || process.env?.['IHS_CLIENT_SECRET'];
-		const clientSecret = this.config?.secretKey || process.env?.['IHS_SECRET_KEY'];
-		if (!clientId || !clientSecret) {
-			throw new Error(`Missing credentials. The "clientId" and "clientSecret" are required.`);
-		}
-
-		const url = baseUrls.auth[this.mode] + '/accesstoken?grant_type=client_credentials';
-		return fetch(url, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: new URLSearchParams([
-				['client_id', clientId],
-				['client_secret', clientSecret]
-			])
-		});
+		const response = await this.authenticate();
+		const authResult = await response.json();
+		return authResult; // TODO: handle cache and expiration
 	}
 
 	async consent({
@@ -55,12 +54,12 @@ export class IHS {
 		action: 'OPTIN' | 'OPTOUT';
 		agent: string;
 	}) {
-		const credentials = await this.getCredentials();
-		const url = new URL(baseUrls['consent'][this.mode] + '/Consent');
+		const authResult = await this.auth();
+		const url = new URL(this.baseUrls.consent + '/Consent');
 		return fetch(url, {
 			method: 'POST',
 			headers: {
-				Authorization: `Bearer ${credentials.access_token}`,
+				Authorization: `Bearer ${authResult['access_token']}`,
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({ patient_id: patientId, ...rest })
@@ -71,22 +70,38 @@ export class IHS {
 		path: `/${fhir4.FhirResource['resourceType']}${string}`,
 		init?: { params?: URLSearchParams | Record<string, string> } & RequestInit
 	) {
-		const credentials = await this.getCredentials();
+		const authResult = await this.auth();
 		const { params, ...request_init } = init || {};
-		const url = new URL(baseUrls['fhir'][this.mode] + path);
+		const url = new URL(this.baseUrls.fhir + path);
 		url.search = params ? new URLSearchParams(params).toString() : url.search;
 		return fetch(url, {
 			...request_init,
 			headers: {
-				Authorization: `Bearer ${credentials.access_token}`,
+				Authorization: `Bearer ${authResult['access_token']}`,
 				...(request_init?.headers || {})
 			}
 		});
 	}
 
-	private async getCredentials() {
-		const response = await this.auth();
-		const credentials = await response.json();
-		return credentials; // TODO: handle cache and expiration
+	get kyc() {
+		const instance = getKycSingleton(this);
+		return instance;
+	}
+
+	private async authenticate() {
+		if (!this.config.clientSecret || !this.config.secretKey) {
+			const message = `Missing credentials. The "clientSecret" and "secretKey" config are required.`;
+			throw new Error(message);
+		}
+
+		const url = this.baseUrls.auth + '/accesstoken?grant_type=client_credentials';
+		return fetch(url, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: new URLSearchParams([
+				['client_id', this.config.clientSecret],
+				['client_secret', this.config.secretKey]
+			])
+		});
 	}
 }
