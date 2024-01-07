@@ -14,4 +14,12 @@ describe('consent', () => {
 		expect(kyc).toBeTypeOf('object');
 		expect(kyc).toBeInstanceOf(KYC);
 	});
+
+	it('generate validation url', async () => {
+		const result = await kyc.generateValidationUrl({
+			name: 'Example Agent',
+			nik: '1673000000000001'
+		});
+		console.log(result);
+	});
 });

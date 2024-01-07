@@ -9,6 +9,7 @@ export interface IHSConfig {
 	clientSecret: string;
 	secretKey: string;
 	mode: Mode;
+	kycPemFile: string;
 }
 
 const defaultBaseUrls: BaseURL = {
@@ -30,7 +31,8 @@ export default class IHS {
 	readonly config: Readonly<IHSConfig> = {
 		mode: process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
 		clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
-		secretKey: process.env['IHS_SECRET_KEY'] || ''
+		secretKey: process.env['IHS_SECRET_KEY'] || '',
+		kycPemFile: process.env['IHS_KYC_PEM_FILE'] || 'ihs-public.pem'
 	};
 
 	constructor(private readonly userConfig?: Partial<IHSConfig>) {
