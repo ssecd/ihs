@@ -1,4 +1,4 @@
-import { IHS } from './ihs.js';
+import IHS from './ihs.js';
 
 let instance: KYC | undefined;
 
