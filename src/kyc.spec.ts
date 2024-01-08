@@ -9,7 +9,7 @@ beforeAll(() => {
 	kyc = getKycSingleton(ihs);
 });
 
-describe('consent', () => {
+describe('kyc', () => {
 	it('instance should be object and valid', async () => {
 		expect(kyc).toBeTypeOf('object');
 		expect(kyc).toBeInstanceOf(KYC);
@@ -21,5 +21,6 @@ describe('consent', () => {
 			nik: '1673000000000001'
 		});
 		console.log(result);
+		expect(result).contains('ENCRYPTED');
 	});
 });

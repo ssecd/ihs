@@ -12,19 +12,20 @@ export class KYC {
 		const [publicKey, privateKey] = await this.generateRsaKeyPairs();
 		const authResult = await this.ihs.auth();
 		const url = new URL(this.ihs.baseUrls.kyc + '/generate-url');
-		const payload = JSON.stringify({
-			agent_name: agent.name,
-			agent_nik: agent.nik,
-			public_key: publicKey
-		});
-		const payload_encrypted = await this.encryptMessage(payload);
+		const payload = await this.encryptMessage(
+			JSON.stringify({
+				agent_name: agent.name,
+				agent_nik: agent.nik,
+				public_key: publicKey
+			})
+		);
 		const response = await fetch(url, {
 			headers: {
 				Authorization: `Bearer ${authResult['access_token']}`,
 				'Content-Type': 'text/plain'
 			},
 			method: 'POST',
-			body: payload_encrypted
+			body: payload
 		});
 		const cipher = await response.text();
 		const plain = await this.decrypt(cipher, privateKey);
