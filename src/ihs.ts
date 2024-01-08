@@ -6,9 +6,36 @@ type API = 'auth' | 'fhir' | 'consent' | 'kyc';
 type BaseURL = Record<Mode, Record<API, string>>;
 
 export interface IHSConfig {
+	/**
+	 * Client secret dari Akses Kode API di Platform SatuSehat
+	 *
+	 * @default process.env.IHS_CLIENT_SECRET
+	 */
 	clientSecret: string;
+
+	/**
+	 * Secret key dari Akses Kode API di Platform SatuSehat
+	 *
+	 * @default process.env.IHS_SECRET_KEY
+	 */
 	secretKey: string;
+
+	/**
+	 * Mode environment API antara `development` ata `production`
+	 *
+	 * @default process.env.NODE_ENV || 'development'
+	 */
 	mode: Mode;
+
+	/**
+	 * Path atau lokasi public key KYC dari SatuSehat. Dapat
+	 * menggunakan absolute atau relative path. Secara default
+	 * akan membaca nilai environment variable IHS_KYC_PEM_FILE
+	 * atau `publickey.dev.pem` pada mode `development` dan
+	 * `publickey.pem` pada mode `production`
+	 *
+	 * @default process.env.IHS_KYC_PEM_FILE
+	 */
 	kycPemFile: string;
 }
 
