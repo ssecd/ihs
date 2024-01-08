@@ -1,7 +1,7 @@
-import path from 'node:path';
-import IHS from './ihs.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
+import path from 'node:path';
+import IHS from './ihs.js';
 
 let instance: KYC | undefined;
 
@@ -67,7 +67,7 @@ export class KYC {
 	}
 
 	private generateAesSymmetricKey(): Buffer {
-		return crypto.randomBytes(32);
+		return crypto.randomBytes(/* 256bit */ 32);
 	}
 
 	private async encryptMessage(plain: string): Promise<string> {
@@ -77,16 +77,16 @@ export class KYC {
 		const cipherIv = crypto.createCipheriv('aes-256-gcm', symmetric, iv);
 		const cipher = Buffer.concat([cipherIv.update(plain, 'utf8'), cipherIv.final()]);
 		const tag = cipherIv.getAuthTag();
-		const merge = Buffer.concat([encryptedSymmetric, iv, cipher, tag]).toString('base64');
-		const result = merge.match(/.{1,64}/g)?.join('\r\n') || '';
-		return `-----BEGIN ENCRYPTED MESSAGE-----\r\n${result}\n-----END ENCRYPTED MESSAGE-----`;
+		const merge = Buffer.concat([encryptedSymmetric, iv, cipher, tag]);
+		return this.formatMessage(merge);
 	}
 
 	private async encryptAesSymmetricKey(key: Buffer): Promise<Buffer> {
 		const ihsPublicKey = await this.getPublicPemFile();
-		const config: crypto.RsaPublicKey = {
+		const config: crypto.RsaPrivateKey = {
 			key: ihsPublicKey,
-			padding: crypto.constants.RSA_PKCS1_OAEP_PADDING
+			padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+			oaepHash: 'sha256'
 		};
 		return crypto.publicEncrypt(config, key);
 	}
@@ -94,6 +94,15 @@ export class KYC {
 	private async decrypt(cipher: string, privateKey: string): Promise<string> {
 		privateKey;
 		return cipher;
+	}
+
+	private formatMessage(message: Buffer): string {
+		const result =
+			message
+				.toString('base64')
+				.match(/.{1,76}/g) // chunk size 76 is based on kyc docs
+				?.join('\r\n') || '';
+		return `-----BEGIN ENCRYPTED MESSAGE-----\r\n${result}\n-----END ENCRYPTED MESSAGE-----`;
 	}
 
 	private async getPublicPemFile() {
