@@ -17,8 +17,8 @@ describe('kyc', () => {
 
 	it('generate validation url', async () => {
 		const result = await kyc.generateValidationUrl({
-			name: 'Example Agent',
-			nik: '1673000000000001'
+			name: process.env.TEST_AGENT_NAME!,
+			nik: process.env.TEST_AGENT_NIK!
 		});
 		console.log(result);
 		expect(result).contains('ENCRYPTED');
