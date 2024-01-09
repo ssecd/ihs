@@ -1,4 +1,5 @@
 accesstoken
+diakses
 fasyankes
 fhir
 kemkes
