@@ -21,6 +21,11 @@ export class KYC {
 
 	constructor(private readonly ihs: IHS) {}
 
+	/**
+	 * Fungsi dari API ini adalah untuk melakukan proses Generate URL Validasi
+	 * di mana URL digunakan untuk melakukan verifikasi akun SatuSehat melalui
+	 * aplikasi SatuSehat Mobile (SSM)
+	 */
 	async generateValidationUrl(agent: {
 		name: string;
 		nik: string;
@@ -53,6 +58,11 @@ export class KYC {
 		return JSON.parse(cipher);
 	}
 
+	/**
+	 * Fungsi dari API ini adalah untuk melakukan proses Generate Kode Verifikasi
+	 * di mana nilai tersebut akan muncul di SatuSehat Mobile (SSM) dan digunakan
+	 * oleh pasien untuk proses validasi
+	 */
 	async generateVerificationCode(patient: {
 		nik: string;
 		name: string;
