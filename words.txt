@@ -1,8 +1,13 @@
 accesstoken
+Autentikasi
 diakses
 fasyankes
 fhir
+Inisialisasi
 kemkes
 OPTIN
 OPTOUT
+publickey
+Silampari
 simrs
+Sriwijaya
