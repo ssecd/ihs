@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import IHS from './ihs.js';
+import IHS, { AuthManager } from './ihs.js';
 
-describe('index', () => {
+describe('ihs', () => {
 	it('instance should be object and valid', () => {
 		const ihs = new IHS();
 		expect(ihs).toBeTypeOf('object');
@@ -28,5 +28,30 @@ describe('index', () => {
 		const ihsProd = new IHS({ mode: 'production' });
 		expect(ihsProd.config.mode).toBe('production');
 		expect(ihsProd.config.kycPemFile).toBe('publickey.pem');
+	});
+
+	it('cached auth token should not be expired in expiration period', async () => {
+		const ihs = new IHS();
+		const detail = await ihs.auth();
+		expect(detail.expires_in).toBeDefined();
+		expect(detail.expires_in).toBeTypeOf('string');
+		expect(+detail.expires_in).toBeTypeOf('number');
+
+		const delay = 0.5; //seconds
+		const expiresIn = +detail.expires_in; // 3599 seconds as this test written
+		const anticipation = 300 + delay; // seconds
+		const dateProvider = () => {
+			const current = new Date();
+			return new Date(current.getTime() + (expiresIn - anticipation) * 1000);
+		};
+
+		const authManager = new AuthManager(dateProvider);
+		expect(authManager.isTokenExpired).toBe(true);
+
+		authManager.authDetail = detail;
+		expect(authManager.isTokenExpired).toBe(false);
+
+		await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+		expect(authManager.isTokenExpired).toBe(true);
 	});
 });

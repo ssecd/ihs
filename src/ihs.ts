@@ -57,7 +57,7 @@ const defaultBaseUrls: BaseURL = {
 export default class IHS {
 	readonly config: Readonly<IHSConfig>;
 
-	private authDetail: AuthDetail | undefined;
+	private readonly authManager = new AuthManager();
 
 	constructor(userConfig?: Partial<IHSConfig>) {
 		this.config = this.applyUserConfig(userConfig);
@@ -85,11 +85,30 @@ export default class IHS {
 	}
 
 	async auth(): Promise<AuthDetail> {
-		if (this.authDetailExpired) {
-			const response = await this.authenticate();
-			this.authDetail = await response.json();
+		if (!this.authManager.isTokenExpired) {
+			return this.authManager.authDetail!;
 		}
-		return this.authDetail!;
+
+		if (!this.config.clientSecret || !this.config.secretKey) {
+			const message = `Missing credentials. The "clientSecret" and "secretKey" config are required.`;
+			throw new Error(message);
+		}
+
+		const url = this.baseUrls.auth + '/accesstoken?grant_type=client_credentials';
+		const response = await fetch(url, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: new URLSearchParams([
+				['client_id', this.config.clientSecret],
+				['client_secret', this.config.secretKey]
+			])
+		});
+		if (!response.ok) {
+			const messages = await response.text();
+			throw new Error('Authentication failed. ' + messages);
+		}
+		this.authManager.authDetail = await response.json();
+		return this.authManager.authDetail!;
 	}
 
 	async fhir(
@@ -118,25 +137,19 @@ export default class IHS {
 		const instance = getKycSingleton(this);
 		return instance;
 	}
+}
 
-	private async authenticate(): Promise<Response> {
-		if (!this.config.clientSecret || !this.config.secretKey) {
-			const message = `Missing credentials. The "clientSecret" and "secretKey" config are required.`;
-			throw new Error(message);
-		}
+/**
+ * @internal
+ */
+export class AuthManager {
+	private readonly ANTICIPATION = 300; // seconds
 
-		const url = this.baseUrls.auth + '/accesstoken?grant_type=client_credentials';
-		return fetch(url, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: new URLSearchParams([
-				['client_id', this.config.clientSecret],
-				['client_secret', this.config.secretKey]
-			])
-		});
-	}
+	authDetail: AuthDetail | undefined;
 
-	private get authDetailExpired() {
+	constructor(private readonly currentTimeProvider?: () => Date) {}
+
+	get isTokenExpired(): boolean {
 		if (!this.authDetail) return true;
 		const issuedAt = parseInt(this.authDetail.issued_at, 10);
 		const expiresIn = parseInt(this.authDetail.expires_in, 10);
@@ -145,14 +158,13 @@ export default class IHS {
 		const expirationTime = issuedAt + expiresIn * 1000;
 
 		// Calculate the anticipation time in milliseconds
-		const anticipation = 300; // seconds
-		const anticipationTime = anticipation * 1000;
+		const anticipationTime = this.ANTICIPATION * 1000;
 
 		// Calculate the time when the token is considered about to expire
 		const aboutToExpireTime = expirationTime - anticipationTime;
 
 		// Compare with the current time
-		const currentTime = Date.now();
+		const currentTime = this.currentTimeProvider?.()?.getTime() ?? Date.now();
 		return aboutToExpireTime <= currentTime;
 	}
 }
