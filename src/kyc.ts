@@ -5,14 +5,32 @@ import IHS from './ihs.js';
 
 let instance: KYC | undefined;
 
+/**
+ * Verifikasi Profil (KYC) merupakan proses yang dilakukan untuk mem-verifikasi
+ * identitas pengguna SatuSehat Mobile dengan mengumpulkan informasi dan data
+ * tentang pengguna SatuSehat Mobile
+ */
 export class KYC {
+	private readonly IV_LENGTH = 12;
+	private readonly TAG_LENGTH = 16;
+	private readonly KEY_SIZE = 256;
+	private readonly ENCRYPTED_TAG = {
+		BEGIN: `-----BEGIN ENCRYPTED MESSAGE-----`,
+		END: `-----END ENCRYPTED MESSAGE-----`
+	};
+
 	constructor(private readonly ihs: IHS) {}
 
-	async generateValidationUrl(agent: { name: string; nik: string }) {
-		const [publicKey, privateKey] = await this.generateRsaKeyPairs();
+	async generateValidationUrl(agent: {
+		name: string;
+		nik: string;
+	}): Promise<KycResponse<KycValidationUrlData> | KycResponse<{ error: string }>> {
 		const authResult = await this.ihs.auth();
 		const url = new URL(this.ihs.baseUrls.kyc + '/generate-url');
-		const payload = await this.encryptMessage(
+
+		// 1) Generate RSA Key Pairs
+		const [publicKey, privateKey] = await this.generateRsaKeyPairs();
+		const payload = await this.encrypt(
 			JSON.stringify({
 				agent_name: agent.name,
 				agent_nik: agent.nik,
@@ -28,11 +46,17 @@ export class KYC {
 			body: payload
 		});
 		const cipher = await response.text();
-		const plain = await this.decrypt(cipher, privateKey);
-		return plain;
+		if (response.ok && cipher.startsWith(this.ENCRYPTED_TAG.BEGIN)) {
+			const plain = await this.decrypt(cipher, privateKey);
+			return JSON.parse(plain);
+		}
+		return JSON.parse(cipher);
 	}
 
-	async generateVerificationCode(patient: { nik: string; name: string }) {
+	async generateVerificationCode(patient: {
+		nik: string;
+		name: string;
+	}): Promise<KycResponse<KycVerificationCodeData> | KycResponse<{ error: string }>> {
 		const authResult = await this.ihs.auth();
 		const url = new URL(this.ihs.baseUrls.kyc + '/challenge-code');
 		const payload = JSON.stringify({
@@ -47,7 +71,7 @@ export class KYC {
 			method: 'POST',
 			body: payload
 		});
-		return response;
+		return response.json();
 	}
 
 	private async generateRsaKeyPairs(): Promise<[string, string]> {
@@ -67,46 +91,74 @@ export class KYC {
 		});
 	}
 
-	private generateAesSymmetricKey(): Buffer {
-		return crypto.randomBytes(/* 256bit */ 32);
+	private async encrypt(plain: string): Promise<string> {
+		// 2) Generate AES Symmetric Key
+		const aesKey = crypto.randomBytes(this.KEY_SIZE / 8);
+
+		// 3) Encrypt message with AES Symmetric Key
+		const iv = crypto.randomBytes(this.IV_LENGTH);
+		const cipher = crypto.createCipheriv('aes-256-gcm', aesKey, iv);
+		const encryptedMessage = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+		const tag = cipher.getAuthTag();
+
+		// 4) Encrypt AES Symmetric Key with RSA server's Public Key
+		const ihsPublicKey = await this.getIhsPublicKey();
+		const encryptedAesKey = crypto.publicEncrypt(
+			{
+				key: ihsPublicKey,
+				padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+				oaepHash: 'sha256'
+			},
+			aesKey
+		);
+
+		// 5) Concat encrypted AES Symmetric Key and encrypted message
+		const merge = Buffer.concat([encryptedAesKey, iv, encryptedMessage, tag]);
+		return `${this.ENCRYPTED_TAG.BEGIN}\r\n${merge.toString('base64')}\n${this.ENCRYPTED_TAG.END}`;
 	}
 
-	private async encryptMessage(plain: string): Promise<string> {
-		const symmetric = this.generateAesSymmetricKey();
-		const encryptedSymmetric = await this.encryptAesSymmetricKey(symmetric);
-		const iv = crypto.randomBytes(12);
-		const cipherIv = crypto.createCipheriv('aes-256-gcm', symmetric, iv);
-		const cipher = Buffer.concat([cipherIv.update(plain, 'utf8'), cipherIv.final()]);
-		const tag = cipherIv.getAuthTag();
-		const merge = Buffer.concat([encryptedSymmetric, iv, cipher, tag]);
-		return this.formatMessage(merge);
+	private async decrypt(text: string, privateKey: string): Promise<string> {
+		// 6) Encrypted server's AES Symmetric Key + encrypted message
+		const content = text
+			.replace(this.ENCRYPTED_TAG.BEGIN, '')
+			.replace(this.ENCRYPTED_TAG.END, '')
+			.replace(/\s+/g, '');
+
+		const contentBuffer = Buffer.from(content, 'base64');
+		const aesKey = contentBuffer.subarray(0, this.KEY_SIZE);
+		const message = contentBuffer.subarray(this.KEY_SIZE);
+
+		// 7) Decrypt server's AES Symmetric Key with client's RSA Private Key
+		const decryptedAesKey = crypto.privateDecrypt(
+			{
+				key: privateKey,
+				padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+				oaepHash: 'sha256'
+			},
+			aesKey
+		);
+
+		const iv = message.subarray(0, this.IV_LENGTH);
+		const tag = message.subarray(-this.TAG_LENGTH);
+		const cipher = message.subarray(this.IV_LENGTH, -this.TAG_LENGTH);
+
+		// 8) Decrypt message with decrypted server's AES Symmetric Key
+		const decipher = crypto.createDecipheriv('aes-256-gcm', decryptedAesKey, iv);
+		decipher.setAuthTag(tag);
+
+		const decryptedMessage = Buffer.concat([
+			decipher.update(cipher.toString('binary'), 'binary'),
+			decipher.final()
+		]);
+
+		return decryptedMessage.toString('utf8');
 	}
 
-	private async encryptAesSymmetricKey(key: Buffer): Promise<Buffer> {
-		const ihsPublicKey = await this.getPublicPemFile();
-		const config: crypto.RsaPrivateKey = {
-			key: ihsPublicKey,
-			padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-			oaepHash: 'sha256'
-		};
-		return crypto.publicEncrypt(config, key);
-	}
-
-	private async decrypt(cipher: string, privateKey: string): Promise<string> {
-		privateKey;
-		return cipher;
-	}
-
-	private formatMessage(message: Buffer): string {
-		const result =
-			message
-				.toString('base64')
-				.match(/.{1,76}/g) // chunk size 76 is based on kyc docs
-				?.join('\r\n') || '';
-		return `-----BEGIN ENCRYPTED MESSAGE-----\r\n${result}\n-----END ENCRYPTED MESSAGE-----`;
-	}
-
-	private async getPublicPemFile() {
+	/**
+	 * IHS public key atau Server's public key adalah public key
+	 * yang diberikan oleh platform SatuSehat
+	 */
+	private async getIhsPublicKey(): Promise<string> {
 		const pemPath = this.ihs.config.kycPemFile;
 		const resolvePath = path.isAbsolute(pemPath) ? pemPath : path.resolve(process.cwd(), pemPath);
 		return await fs.readFile(resolvePath, 'utf8');
@@ -116,4 +168,78 @@ export class KYC {
 export function getKycSingleton(...params: ConstructorParameters<typeof KYC>): KYC {
 	if (!instance) instance = new KYC(...params);
 	return instance;
+}
+
+export interface KycResponse<T> {
+	metadata: {
+		/**
+		 * HTTP code
+		 */
+		code: string;
+
+		/**
+		 * Pesan sesuai HTTP code
+		 */
+		message: string;
+	};
+	data: T;
+}
+
+export interface KycValidationUrlData {
+	/**
+	 * Informasi nama petugas/operator Fasilitas Pelayanan Kesehatan
+	 * (Fasyankes) yang akan melakukan validasi
+	 */
+	agent_name: string;
+
+	/**
+	 * Informasi nomor identitas petugas/operator Fasilitas Pelayanan
+	 * Kesehatan (Fasyankes) yang akan melakukan validasi
+	 */
+	agent_nik: string;
+
+	/**
+	 * Nilai token yang terdapat pada URL sesuai nilai property
+	 * `data.url` yang terdapat pada response ini
+	 */
+	token: string;
+
+	/**
+	 * URL lengkap beserta token-nya yang digunakan untuk melakukan validasi
+	 */
+	url: string;
+}
+
+export interface KycVerificationCodeData {
+	/**
+	 * Informasi nomor identitas pasien yang akan di-verifikasi oleh
+	 * petugas/operator Fasilitas Pelayanan Kesehatan (Fasyankes)
+	 */
+	nik: string;
+
+	/**
+	 * Informasi nama pasien yang akan di-verifikasi oleh petugas/operator
+	 * Fasilitas Pelayanan Kesehatan (Fasyankes).
+	 */
+	name: string;
+
+	/**
+	 * Nomor id SatuSehat pasien
+	 */
+	ihs_number: string;
+
+	/**
+	 * Nilai kode verifikasi pasien untuk proses validasi
+	 */
+	challenge_code: number;
+
+	/**
+	 * Informasi waktu kode verifikasi dibuat
+	 */
+	created_timestamp: string;
+
+	/**
+	 * Informasi kedaluwarsa kode verifikasi
+	 */
+	expired_timestamp: string;
 }
