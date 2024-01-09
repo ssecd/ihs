@@ -32,13 +32,13 @@ describe('ihs', () => {
 
 	it('cached auth token should not be expired in expiration period', async () => {
 		const ihs = new IHS();
-		const detail = await ihs.auth();
-		expect(detail.expires_in).toBeDefined();
-		expect(detail.expires_in).toBeTypeOf('string');
-		expect(+detail.expires_in).toBeTypeOf('number');
+		const authDetail = await ihs.auth();
+		expect(authDetail['expires_in']).toBeDefined();
+		expect(authDetail['expires_in']).toBeTypeOf('string');
+		expect(+authDetail['expires_in']).toBeTypeOf('number');
 
 		const delay = 0.5; //seconds
-		const expiresIn = +detail.expires_in; // 3599 seconds as this test written
+		const expiresIn = +authDetail['expires_in']; // 3599 seconds as this test written
 		const anticipation = 300 + delay; // seconds
 		const dateProvider = () => {
 			const current = new Date();
@@ -48,7 +48,7 @@ describe('ihs', () => {
 		const authManager = new AuthManager(dateProvider);
 		expect(authManager.isTokenExpired).toBe(true);
 
-		authManager.authDetail = detail;
+		authManager.authDetail = authDetail;
 		expect(authManager.isTokenExpired).toBe(false);
 
 		await new Promise((resolve) => setTimeout(resolve, delay * 1000));
