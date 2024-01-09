@@ -54,4 +54,13 @@ describe('ihs', () => {
 		await new Promise((resolve) => setTimeout(resolve, delay * 1000));
 		expect(authManager.isTokenExpired).toBe(true);
 	});
+
+	it('get patient resource should be return ok', async () => {
+		const ihs = new IHS();
+		const response = await ihs.fhir(`/Patient/${process.env.TEST_PATIENT_ID}`);
+		expect(response.ok).toBe(true);
+
+		const patient: fhir4.Patient = await response.json();
+		expect(patient.resourceType === 'Patient').toBe(true);
+	});
 });

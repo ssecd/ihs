@@ -112,13 +112,13 @@ export default class IHS {
 	}
 
 	async fhir(
-		path: `/${fhir4.FhirResource['resourceType']}${string}`,
-		init?: { params?: URLSearchParams | Record<string, string> } & RequestInit
-	) {
+		path: `/${Omit<fhir4.FhirResource, 'Bundle'>['resourceType']}${string}` | `/`,
+		init?: { searchParams?: URLSearchParams | Record<string, string> } & RequestInit
+	): Promise<Response> {
 		const authResult = await this.auth();
-		const { params, ...request_init } = init || {};
+		const { searchParams, ...request_init } = init || {};
 		const url = new URL(this.baseUrls.fhir + path);
-		url.search = params ? new URLSearchParams(params).toString() : url.search;
+		url.search = searchParams ? new URLSearchParams(searchParams).toString() : url.search;
 		return fetch(url, {
 			...request_init,
 			headers: {
