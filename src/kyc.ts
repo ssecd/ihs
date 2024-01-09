@@ -231,7 +231,7 @@ export interface KycVerificationCodeData {
 	/**
 	 * Nilai kode verifikasi pasien untuk proses validasi
 	 */
-	challenge_code: number;
+	challenge_code: string;
 
 	/**
 	 * Informasi waktu kode verifikasi dibuat
