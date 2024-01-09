@@ -60,11 +60,11 @@ export default class IHS {
 	private authDetail: AuthDetail | undefined;
 
 	constructor(userConfig?: Partial<IHSConfig>) {
-		this.config = this.defineConfig(userConfig);
+		this.config = this.applyUserConfig(userConfig);
 		Object.freeze(this.config);
 	}
 
-	private defineConfig(userConfig?: Partial<IHSConfig>) {
+	private applyUserConfig(userConfig?: Partial<IHSConfig>) {
 		const defaultConfig: Readonly<IHSConfig> = {
 			mode: process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
 			clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
@@ -72,11 +72,12 @@ export default class IHS {
 			kycPemFile: process.env['IHS_KYC_PEM_FILE'] || ''
 		};
 
-		const merged = { ...defaultConfig, ...userConfig };
-		if (!merged.kycPemFile) {
-			merged.kycPemFile = merged.mode === 'development' ? 'publickey.dev.pem' : 'publickey.pem';
+		const mergedConfig = { ...defaultConfig, ...userConfig };
+		if (!mergedConfig.kycPemFile) {
+			mergedConfig.kycPemFile =
+				mergedConfig.mode === 'development' ? 'publickey.dev.pem' : 'publickey.pem';
 		}
-		return merged;
+		return mergedConfig;
 	}
 
 	get baseUrls() {
