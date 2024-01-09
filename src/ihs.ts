@@ -55,19 +55,26 @@ const defaultBaseUrls: BaseURL = {
 } as const;
 
 export default class IHS {
-	readonly config: Readonly<IHSConfig> = {
-		mode: process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
-		clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
-		secretKey: process.env['IHS_SECRET_KEY'] || '',
-		get kycPemFile() {
-			const fromEnv = process.env['IHS_KYC_PEM_FILE'];
-			return fromEnv || (this.mode === 'development' ? 'publickey.dev.pem' : 'publickey.pem');
-		}
-	};
+	readonly config: Readonly<IHSConfig>;
 
-	constructor(private readonly userConfig?: Partial<IHSConfig>) {
-		this.config = { ...this.config, ...this.userConfig };
+	constructor(userConfig?: Partial<IHSConfig>) {
+		this.config = this.defineConfig(userConfig);
 		Object.freeze(this.config);
+	}
+
+	private defineConfig(userConfig?: Partial<IHSConfig>) {
+		const defaultConfig: Readonly<IHSConfig> = {
+			mode: process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
+			clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
+			secretKey: process.env['IHS_SECRET_KEY'] || '',
+			kycPemFile: process.env['IHS_KYC_PEM_FILE'] || ''
+		};
+
+		const merged = { ...defaultConfig, ...userConfig };
+		if (!merged.kycPemFile) {
+			merged.kycPemFile = merged.mode === 'development' ? 'publickey.dev.pem' : 'publickey.pem';
+		}
+		return merged;
 	}
 
 	get baseUrls() {
