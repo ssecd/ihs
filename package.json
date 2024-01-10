@@ -37,13 +37,12 @@
 	"module": "./dist/ihs.js",
 	"types": "./dist/ihs.d.ts",
 	"files": [
-		"src",
 		"dist"
 	],
 	"exports": {
 		".": {
 			"types": "./dist/ihs.d.ts",
-			"import": "./src/ihs.js"
+			"import": "./dist/ihs.js"
 		}
 	},
 	"devDependencies": {
