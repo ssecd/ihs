@@ -185,6 +185,8 @@ Proses enkripsi dan dekripsi pesan dilakukan dengan menggunakan algoritma `aes-2
 
 Proses kriptografi pada API ini memerlukan file _server key_ atau _public key_ dengan format `.pem`. File _public key_ ini dapat disesuaikan lokasinya dengan mengatur `kycPemFile` pada config instance atau class `IHS` yang secara default bernama `publickey.dev.pem` pada mode `development` atau `publickey.pem` pada mode `production` dan berada di _working directory_ atau folder di mana API dijalankan.
 
+File _public key_ atau _server key_ dapat di-unduh di [sini](https://github.com/ssecd/ihs/issues/2).
+
 ## Konfigurasi
 
 Konfigurasi mengikuti interface berikut:
