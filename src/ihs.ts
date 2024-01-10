@@ -152,8 +152,8 @@ export default class IHS {
 	}
 
 	async fhir(
-		path: `/${Exclude<fhir4.FhirResource, 'Bundle'>['resourceType']}${string}` | `/`,
-		init?: Exclude<RequestConfig, 'path' | 'type'>
+		path: `/${Exclude<fhir4.FhirResource['resourceType'], 'Bundle'>}${string}` | `/`,
+		init?: Omit<RequestConfig, 'path' | 'type'>
 	): Promise<Response> {
 		return this.request({ ...init, type: 'fhir', path });
 	}
