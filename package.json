@@ -15,11 +15,10 @@
 	"type": "module",
 	"scripts": {
 		"test": "vitest",
-		"build": "rollup -c",
+		"build": "rollup -c && dts-buddy dist/ihs.d.ts -m @ssecd/ihs:src/ihs.js",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
-		"release": "changeset publish",
-		"prepublishOnly": "dts-buddy dist/ihs.d.ts -m @ssecd/ihs:src/ihs.js"
+		"release": "changeset publish"
 	},
 	"keywords": [
 		"ihs",
