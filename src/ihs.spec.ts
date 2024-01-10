@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import IHS, { AuthManager } from './ihs.js';
+import IHS, { AuthManager, IHSConfig } from './ihs.js';
 
 describe('ihs', () => {
 	it('instance should be object and valid', () => {
@@ -8,9 +8,9 @@ describe('ihs', () => {
 		expect(ihs).toBeInstanceOf(IHS);
 	});
 
-	it('config must be valid from env file', () => {
+	it('config should be valid from env file', async () => {
 		const ihs = new IHS();
-		const config = ihs.config;
+		const config = await ihs.getConfig();
 		expect(config).toBeTypeOf('object');
 		expect(config.clientSecret).toBeDefined();
 		expect(config.clientSecret).toBeTypeOf('string');
@@ -20,14 +20,34 @@ describe('ihs', () => {
 		expect(config.kycPemFile).toBe('publickey.dev.pem');
 	});
 
-	it('config kycPemFile should be valid between development and production', () => {
+	it('config should be valid from async config', async () => {
+		const userConfig: IHSConfig = {
+			clientSecret: 'th3-53cREt',
+			secretKey: 'th3_keY',
+			kycPemFile: 'server-key.pem',
+			mode: 'development'
+		};
+
+		const ihs = new IHS(async () => {
+			return new Promise((resolve) => {
+				setTimeout(() => resolve({ ...userConfig }), 100);
+			});
+		});
+
+		const config = await ihs.getConfig();
+		expect(config).toEqual(userConfig);
+	});
+
+	it('config kycPemFile should be valid between development and production', async () => {
 		const ihsDev = new IHS();
-		expect(ihsDev.config.mode).toBe('development');
-		expect(ihsDev.config.kycPemFile).toBe('publickey.dev.pem');
+		const devConfig = await ihsDev.getConfig();
+		expect(devConfig.mode).toBe('development');
+		expect(devConfig.kycPemFile).toBe('publickey.dev.pem');
 
 		const ihsProd = new IHS({ mode: 'production' });
-		expect(ihsProd.config.mode).toBe('production');
-		expect(ihsProd.config.kycPemFile).toBe('publickey.pem');
+		const prodConfig = await ihsProd.getConfig();
+		expect(prodConfig.mode).toBe('production');
+		expect(prodConfig.kycPemFile).toBe('publickey.pem');
 	});
 
 	it('cached auth token should not be expired in expiration period', async () => {
@@ -37,7 +57,7 @@ describe('ihs', () => {
 		expect(authDetail['expires_in']).toBeTypeOf('string');
 		expect(+authDetail['expires_in']).toBeTypeOf('number');
 
-		const delay = 0.5; //seconds
+		const delay = 1.5; //seconds
 		const expiresIn = +authDetail['expires_in']; // 3599 seconds as this test written
 		const anticipation = 300 + delay; // seconds
 		const dateProvider = () => {

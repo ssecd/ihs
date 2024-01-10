@@ -15,14 +15,12 @@ export class Consent {
 	 */
 	async get(patientId: string): Promise<fhir4.Consent | fhir4.OperationOutcome> {
 		try {
-			const authResult = await this.ihs.auth();
-			const url = new URL(this.ihs.baseUrls.consent + '/Consent');
-			url.searchParams.set('patient_id', patientId);
-			const response = await fetch(url, {
-				headers: {
-					Authorization: `Bearer ${authResult['access_token']}`
-				}
+			const response = await this.ihs.request({
+				type: 'consent',
+				path: '/Consent',
+				searchParams: [['patient_id', patientId]]
 			});
+
 			if (response.status >= 500) {
 				throw new Error(await response.text());
 			}
@@ -60,17 +58,15 @@ export class Consent {
 		agent: string;
 	}) {
 		try {
-			const authResult = await this.ihs.auth();
-			const url = new URL(this.ihs.baseUrls.consent + '/Consent');
-			const payload = JSON.stringify({ patient_id: data.patientId, ...data });
-			const response = await fetch(url, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${authResult['access_token']}`,
-					'Content-Type': 'application/json'
-				},
-				body: payload
+			const { patientId: patient_id, ...restData } = data;
+			const response = await this.ihs.request({
+				body: JSON.stringify({ patient_id, ...restData }),
+				headers: { 'Content-Type': 'application/json' },
+				type: 'consent',
+				path: '/Consent',
+				method: 'POST'
 			});
+
 			if (response.status >= 500) {
 				throw new Error(await response.text());
 			}

@@ -29,33 +29,33 @@ export class KYC {
 	async generateValidationUrl(agent: {
 		name: string;
 		nik: string;
-	}): Promise<KycResponse<KycValidationUrlData> | KycResponse<{ error: string }>> {
-		const authResult = await this.ihs.auth();
-		const url = new URL(this.ihs.baseUrls.kyc + '/generate-url');
-
-		// 1) Generate RSA Key Pairs
-		const [publicKey, privateKey] = await this.generateRsaKeyPairs();
-		const payload = await this.encrypt(
-			JSON.stringify({
-				agent_name: agent.name,
-				agent_nik: agent.nik,
-				public_key: publicKey
-			})
-		);
-		const response = await fetch(url, {
-			headers: {
-				Authorization: `Bearer ${authResult['access_token']}`,
-				'Content-Type': 'text/plain'
-			},
-			method: 'POST',
-			body: payload
-		});
-		const cipher = await response.text();
-		if (response.ok && cipher.startsWith(this.ENCRYPTED_TAG.BEGIN)) {
-			const plain = await this.decrypt(cipher, privateKey);
-			return JSON.parse(plain);
+	}): Promise<KycResponse<KycValidationUrlData | { error: string }>> {
+		try {
+			// 1) Generate RSA Key Pairs
+			const [publicKey, privateKey] = await this.generateRsaKeyPairs();
+			const payload = await this.encrypt(
+				JSON.stringify({
+					agent_name: agent.name,
+					agent_nik: agent.nik,
+					public_key: publicKey
+				})
+			);
+			const response = await this.ihs.request({
+				headers: { 'Content-Type': 'text/plain' },
+				path: '/generate-url',
+				body: payload,
+				method: 'POST',
+				type: 'kyc'
+			});
+			const cipher = await response.text();
+			if (response.ok && cipher.startsWith(this.ENCRYPTED_TAG.BEGIN)) {
+				const plain = await this.decrypt(cipher, privateKey);
+				return JSON.parse(plain);
+			}
+			return JSON.parse(cipher);
+		} catch (error) {
+			return this.exception({ error });
 		}
-		return JSON.parse(cipher);
 	}
 
 	/**
@@ -66,22 +66,39 @@ export class KYC {
 	async generateVerificationCode(patient: {
 		nik: string;
 		name: string;
-	}): Promise<KycResponse<KycVerificationCodeData> | KycResponse<{ error: string }>> {
-		const authResult = await this.ihs.auth();
-		const url = new URL(this.ihs.baseUrls.kyc + '/challenge-code');
-		const payload = JSON.stringify({
-			metadata: { method: 'request_per_nik' },
-			data: patient
-		});
-		const response = await fetch(url, {
-			headers: {
-				Authorization: `Bearer ${authResult['access_token']}`,
-				'Content-Type': 'application/json'
+	}): Promise<KycResponse<KycVerificationCodeData | { error: string }>> {
+		try {
+			const payload = JSON.stringify({
+				metadata: { method: 'request_per_nik' },
+				data: patient
+			});
+			const response = await this.ihs.request({
+				headers: { 'Content-Type': 'text/plain' },
+				path: '/challenge-code',
+				body: payload,
+				method: 'POST',
+				type: 'kyc'
+			});
+			return response.json();
+		} catch (error) {
+			return this.exception({ error });
+		}
+	}
+
+	private exception(data: {
+		code?: string;
+		message?: string;
+		error: unknown;
+	}): KycResponse<{ error: string }> {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const message = (data.error as any)?.message || JSON.stringify(data.error || 'unknown error');
+		return {
+			metadata: {
+				code: data.code || '500',
+				message: data.message || 'Internal server error'
 			},
-			method: 'POST',
-			body: payload
-		});
-		return response.json();
+			data: { error: message }
+		};
 	}
 
 	private async generateRsaKeyPairs(): Promise<[string, string]> {
@@ -169,8 +186,10 @@ export class KYC {
 	 * yang diberikan oleh platform SatuSehat
 	 */
 	private async getIhsPublicKey(): Promise<string> {
-		const pemPath = this.ihs.config.kycPemFile;
-		const resolvePath = path.isAbsolute(pemPath) ? pemPath : path.resolve(process.cwd(), pemPath);
+		const { kycPemFile } = await this.ihs.getConfig();
+		const resolvePath = path.isAbsolute(kycPemFile)
+			? kycPemFile
+			: path.resolve(process.cwd(), kycPemFile);
 		return await fs.readFile(resolvePath, 'utf8');
 	}
 }

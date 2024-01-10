@@ -39,6 +39,14 @@ export interface IHSConfig {
 	kycPemFile: string;
 }
 
+type UserConfig = Partial<IHSConfig> | (() => PromiseLike<Partial<IHSConfig>>);
+
+type RequestConfig = {
+	type: Exclude<API, 'auth'>;
+	path: `/${string}`;
+	searchParams?: URLSearchParams | [string, string][];
+} & RequestInit;
+
 const defaultBaseUrls: BaseURL = {
 	development: {
 		auth: `https://api-satusehat-dev.dto.kemkes.go.id/oauth2/v1`,
@@ -55,16 +63,12 @@ const defaultBaseUrls: BaseURL = {
 } as const;
 
 export default class IHS {
-	readonly config: Readonly<IHSConfig>;
-
+	private config: Readonly<IHSConfig> | undefined;
 	private readonly authManager = new AuthManager();
 
-	constructor(userConfig?: Partial<IHSConfig>) {
-		this.config = this.applyUserConfig(userConfig);
-		Object.freeze(this.config);
-	}
+	constructor(private readonly userConfig?: UserConfig) {}
 
-	private applyUserConfig(userConfig?: Partial<IHSConfig>) {
+	private async applyUserConfig(): Promise<void> {
 		const defaultConfig: Readonly<IHSConfig> = {
 			mode: process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
 			clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
@@ -72,37 +76,73 @@ export default class IHS {
 			kycPemFile: process.env['IHS_KYC_PEM_FILE'] || ''
 		};
 
-		const mergedConfig = { ...defaultConfig, ...userConfig };
+		const resolveUserConfig =
+			typeof this.userConfig === 'function' ? await this.userConfig() : this.userConfig;
+
+		const mergedConfig = { ...defaultConfig, ...resolveUserConfig };
 		if (!mergedConfig.kycPemFile) {
 			mergedConfig.kycPemFile =
 				mergedConfig.mode === 'development' ? 'publickey.dev.pem' : 'publickey.pem';
 		}
-		return mergedConfig;
+		this.config = mergedConfig;
 	}
 
-	get baseUrls() {
-		return defaultBaseUrls[this.config.mode];
+	async getConfig(): Promise<IHSConfig> {
+		if (!this.config) await this.applyUserConfig();
+		return this.config!;
 	}
 
+	async invalidateConfig(): Promise<void> {
+		this.config = undefined;
+		await this.applyUserConfig();
+	}
+
+	/**
+	 * Request ke API `consent`, `fhir`, dan `kyc` yang dapat diatur
+	 * pada property `type` pada parameter `config`. Autentikasi sudah
+	 * ditangani secara otomatis pada method ini.
+	 */
+	async request(config: RequestConfig): Promise<Response> {
+		const { mode } = await this.getConfig();
+		const { type, path, searchParams, ...init } = config;
+		const url = new URL(defaultBaseUrls[mode][type] + path);
+		url.search = searchParams ? new URLSearchParams(searchParams).toString() : url.search;
+		const auth = await this.auth();
+		init.headers = {
+			Authorization: `Bearer ${auth['access_token']}`,
+			...init.headers
+		};
+		return fetch(url, init);
+	}
+
+	/**
+	 * Autentikasi menggunakan `clientSecret` dan `secretKey` dengan kembalian
+	 * berupa detail autentikasi termasuk `access_token` yang digunakan untuk
+	 * request ke API `consent`, `fhir`, dan `kyc`.
+	 *
+	 * IHS Note: Rate limit is 1 request per minute after a failed attempt.
+	 */
 	async auth(): Promise<AuthDetail> {
 		if (!this.authManager.isTokenExpired) {
 			return this.authManager.authDetail!;
 		}
 
-		if (!this.config.clientSecret || !this.config.secretKey) {
+		const { clientSecret, secretKey, mode } = await this.getConfig();
+		if (!clientSecret || !secretKey) {
 			const message = `Missing credentials. The "clientSecret" and "secretKey" config are required.`;
 			throw new Error(message);
 		}
 
-		const url = this.baseUrls.auth + '/accesstoken?grant_type=client_credentials';
+		const url = defaultBaseUrls[mode]['auth'] + '/accesstoken?grant_type=client_credentials';
 		const response = await fetch(url, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: new URLSearchParams([
-				['client_id', this.config.clientSecret],
-				['client_secret', this.config.secretKey]
+				['client_id', clientSecret],
+				['client_secret', secretKey]
 			])
 		});
+
 		if (!response.ok) {
 			const messages = await response.text();
 			throw new Error('Authentication failed. ' + messages);
@@ -112,20 +152,10 @@ export default class IHS {
 	}
 
 	async fhir(
-		path: `/${Omit<fhir4.FhirResource, 'Bundle'>['resourceType']}${string}` | `/`,
-		init?: { searchParams?: URLSearchParams | Record<string, string> } & RequestInit
+		path: `/${Exclude<fhir4.FhirResource, 'Bundle'>['resourceType']}${string}` | `/`,
+		init?: Exclude<RequestConfig, 'path' | 'type'>
 	): Promise<Response> {
-		const authResult = await this.auth();
-		const { searchParams, ...request_init } = init || {};
-		const url = new URL(this.baseUrls.fhir + path);
-		url.search = searchParams ? new URLSearchParams(searchParams).toString() : url.search;
-		return fetch(url, {
-			...request_init,
-			headers: {
-				Authorization: `Bearer ${authResult['access_token']}`,
-				...(request_init?.headers || {})
-			}
-		});
+		return this.request({ ...init, type: 'fhir', path });
 	}
 
 	get consent() {
@@ -139,9 +169,7 @@ export default class IHS {
 	}
 }
 
-/**
- * @internal
- */
+/** @internal Don't use it. Only for internal purposes. */
 export class AuthManager {
 	private readonly ANTICIPATION = 300; // seconds
 
