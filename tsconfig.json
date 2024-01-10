@@ -10,7 +10,7 @@
 		"lib": ["esnext", "DOM"],
 		"outDir": "dist",
 		"rootDirs": ["."],
-		"declaration": true,
+		"declaration": false,
 		"stripInternal": true
 	},
 	"include": [
@@ -18,6 +18,8 @@
 		"src/**/*.ts"
 	],
 	"exclude": [
-		"node_modules/**" //
+		"node_modules/**", //
+		"**/*.test.ts",
+		"**/*.spec.ts"
 	]
 }
