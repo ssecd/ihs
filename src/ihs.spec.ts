@@ -21,7 +21,7 @@ describe('ihs', () => {
 	});
 
 	it('config should be valid from async config', async () => {
-		const userConfig: IHSConfig = {
+		const userConfig: Partial<IHSConfig> = {
 			clientSecret: 'th3-53cREt',
 			secretKey: 'th3_keY',
 			kycPemFile: 'server-key.pem',

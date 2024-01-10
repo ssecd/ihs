@@ -37,6 +37,12 @@ export interface IHSConfig {
 	 * @default process.env.IHS_KYC_PEM_FILE
 	 */
 	kycPemFile: string;
+
+	/**
+	 * Custom auth store untuk menyimpan atau men-cache auth
+	 * detail. Secara default auth detail di-cache di cluster memory.
+	 */
+	authStore: AuthStore;
 }
 
 type UserConfig = Partial<IHSConfig> | (() => PromiseLike<Partial<IHSConfig>>);
@@ -46,6 +52,16 @@ type RequestConfig = {
 	path: `/${string}`;
 	searchParams?: URLSearchParams | [string, string][];
 } & RequestInit;
+
+export interface AuthStore {
+	/**
+	 * Autentikasi akan terjadi ketika method
+	 * ini mengembalikan nilai `undefined`
+	 */
+	get(): PromiseLike<AuthDetail | undefined>;
+
+	set(detail: AuthDetail): PromiseLike<void>;
+}
 
 const defaultBaseUrls: BaseURL = {
 	development: {
@@ -73,7 +89,8 @@ export default class IHS {
 			mode: process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
 			clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
 			secretKey: process.env['IHS_SECRET_KEY'] || '',
-			kycPemFile: process.env['IHS_KYC_PEM_FILE'] || ''
+			kycPemFile: process.env['IHS_KYC_PEM_FILE'] || '',
+			authStore: new DefaultAuthStore()
 		};
 
 		const resolveUserConfig =
@@ -166,6 +183,15 @@ export default class IHS {
 	get kyc() {
 		const instance = getKycSingleton(this);
 		return instance;
+	}
+}
+
+class DefaultAuthStore implements AuthStore {
+	get(): PromiseLike<AuthDetail | undefined> {
+		throw new Error('Method not implemented.');
+	}
+	set(detail: AuthDetail): PromiseLike<void> {
+		throw new Error('Method not implemented.');
 	}
 }
 
