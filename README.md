@@ -4,6 +4,7 @@ Indonesia Health Service API Helpers
 - ✅ Patient Consent API
 - ✅ KYC API
 - ✅ Automatic authentication and token invalidation
+- ✅ TypeSafe and Autocomplete-Enabled API
 
 ## Instalasi
 
@@ -25,7 +26,46 @@ Instalasi juga dapat dilakukan menggunakan `PNPM` atau `YARN`
 
 ### Inisialisasi
 
-TODO
+Penggunaan paket ini sangatlah sederhana, cukup menginisialisasi global instansi pada sebuah modul atau file seperti berikut:
+
+```ts
+// file: ihs.ts atau ihs.js
+import IHS from '@ssecd/ihs';
+
+const ihs = new IHS();
+
+export default ihs;
+```
+
+Secara default konfigurasi seperti **Client Secret** atau **Secret Key** akan dibaca melalui environment variable namun konfigurasi juga dapat diatur pada constructor class seperti berikut:
+
+```ts
+const ihs = new IHS({
+	clientSecret: '<client secret dari platform SatuSehat>',
+	kycPemFile: `/home/user/kyc-publickey.pem`
+	// dan seterusnya
+});
+```
+
+Selain menggunakan objek, konfigurasi juga dapat diatur menggunakan fungsi, misalnya pada kasus membaca atau mendapatkan konfigurasi dari database:
+
+```ts
+const ihs = new IHS(async () => {
+	const config = await sql`select * from config`;
+	return {
+		clientSecret: config.clientSecret
+		// dan seterusnya ...
+	};
+});
+```
+
+Perlu diperhatikan bahwa fungsi config pada constructor parameter tersebut hanya akan dipanggil satu kali. Bila terjadi perubahan konfigurasi harap memanggil fungsi `invalidateConfig()` pada instansi IHS untuk memperbaharui atau menerapkan perubahan konfigurasi.
+
+```ts
+await ihs.invalidateConfig();
+```
+
+Konfigurasi lengkapnya dapat dilihat di bagian [Konfigurasi](#konfigurasi).
 
 ### Autentikasi
 
@@ -39,17 +79,111 @@ import ihs from './path/to/ihs.js';
 const detail: AuthDetail = await ihs.auth();
 ```
 
-### Consent
+### Patient Consent API
 
-TODO
+Pada Patient Consent, terdapat dua buah method yang di-definisikan sesuai dengan spesifikasi IHS yakni method untuk mendapatkan informasi consent pasien:
 
-### FHIR
+```ts
+const result = await ihs.consent.get('P02478375538');
 
-TODO
+if (result.resourceType === 'Consent') {
+	console.info(result); // Consent resource
+} else {
+	console.error(result); // OperationOutcome resource
+}
+```
 
-### KYC
+dan method untuk memperbarui informasi consent pasien:
 
-TODO
+```ts
+const result = await ihs.consent.update({
+	patientId: 'P02478375538',
+	action: 'OPTIN',
+	agent: 'Nama Agen'
+});
+
+if (result.resourceType === 'Consent') {
+	console.info(result); // Consent resource
+} else {
+	console.error(result); // OperationOutcome resource
+}
+```
+
+Setiap method pada Patient Consent API ini memiliki nilai kembalian FHIR resource `Consent` jika request sukses dan `OperationOutcome` jika request gagal.
+
+### FHIR API
+
+Pada API ini, implementasi-nya sangat sederhana dan mengutamakan fleksibilitas yakni dengan hanya mengembalikan `Response` object sehingga response sepenuhnya di-_handle_ pengguna.
+
+```ts
+const response: Response = await ihs.fhir(`/Patient`, {
+	searchParams: [
+		['identifier', 'https://fhir.kemkes.go.id/id/nik|9271060312000001'],
+		['gender', 'male']
+	]
+});
+
+if (response.ok) {
+	const patientBundle = await response.json();
+	console.info(patientBundle); // Bundle<Patient>
+}
+```
+
+### KYC API
+
+Pada API ini, terdapat dua buah method yakni method untuk melakukan proses Generate URL Validasi di mana URL digunakan untuk melakukan verifikasi akun SatuSehat melalui SatuSehat Mobile:
+
+```ts
+const result = await ihs.kyc.generateValidationUrl({
+	name: 'Nama Agen',
+	nik: 'NIK Agen'
+});
+
+if ('error' in result.data) {
+	console.error(result.data.error); // Request error message
+} else {
+	console.info(result.data);
+	/*
+	{
+		agent_name: string;
+		agent_nik: string;
+		token: string;
+		url: string;
+	}
+	*/
+}
+```
+
+dan method untuk melakukan proses Generate Kode Verifikasi di mana nilai tersebut akan muncul di SatuSehat Mobile (SSM) dan digunakan oleh pasien untuk proses validasi:
+
+```ts
+const result = await ihs.kyc.generateVerificationCode({
+	nik: 'NIK Pasien',
+	name: 'Nama Pasien'
+});
+
+if ('error' in result.data) {
+	console.error(result.data.error); // Request error message
+} else {
+	console.info(result.data);
+	/*
+	{
+		nik: string;
+		name: string;
+		ihs_number: string;
+		challenge_code: string;
+		created_timestamp: string;
+		expired_timestamp: string;
+	}
+	*/
+}
+```
+
+Setiap method pada API ini memiliki parameter dan nilai kembalian yang di-definisikan sesuai dengan spesifikasi IHS pada Playbook.
+
+Proses enkripsi dan dekripsi pesan dilakukan dengan menggunakan algoritma `aes-256-gcm` sedangkan untuk proses enkripsi dan dekripsi _symmetric key_ menggunakan metode RSA dengan `RSA_PKCS1_OAEP_PADDING` padding dan `sha256` hash. Semua proses tersebut sudah dilakukan secara internal sesuai dengan spesifikasi IHS pada Playbook.
+
+Proses kriptografi pada API ini memerlukan file _server key_ atau _public key_ dengan format `.pem`. File _public key_ ini dapat disesuaikan lokasinya dengan mengatur `kycPemFile` pada config instance atau class `IHS` yang secara default bernama `publickey.dev.pem` pada mode `development` atau `publickey.pem` pada mode `production` dan berada di _working directory_ atau folder di mana API dijalankan.
 
 ## Konfigurasi
 
