@@ -19,7 +19,7 @@
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"release": "changeset publish",
-		"prepublishOnly": "dts-buddy"
+		"prepublishOnly": "dts-buddy dist/ihs.d.ts -m @ssecd/ihs:src/ihs.js"
 	},
 	"keywords": [
 		"ihs",
