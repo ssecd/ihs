@@ -94,7 +94,7 @@ class RedisAuthStore implements AuthStore {
 		const { issued_at, expires_in } = detail;
 		const anticipate = 300; // seconds
 		const ttl = +issued_at + (+expires_in - anticipate) * 1000 - Date.now();
-		await rd.set(this.CACHE_KEY, JSON.stringify(detail), 'PX', ttl);
+		await redis.set(this.CACHE_KEY, JSON.stringify(detail), 'PX', ttl);
 	}
 
 	async get(): Promise<AuthDetail | undefined> {
