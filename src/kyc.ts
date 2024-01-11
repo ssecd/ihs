@@ -73,7 +73,7 @@ export class KYC {
 				data: patient
 			});
 			const response = await this.ihs.request({
-				headers: { 'Content-Type': 'text/plain' },
+				headers: { 'Content-Type': 'application/json' },
 				path: '/challenge-code',
 				body: payload,
 				method: 'POST',
