@@ -1,5 +1,11 @@
 # @ssecd/ihs
 
+## 0.1.1
+
+### Patch Changes
+
+- 1b199d2: Fix consent update return type
+
 ## 0.1.0
 
 ### Minor Changes
