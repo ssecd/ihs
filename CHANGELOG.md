@@ -1,5 +1,15 @@
 # @ssecd/ihs
 
+## 0.1.0
+
+### Minor Changes
+
+- 45f74d3: Add custom auth store support
+
+### Patch Changes
+
+- d8cd065: Correct KYC verification code `content-type`
+
 ## 0.0.2
 
 ### Patch Changes
