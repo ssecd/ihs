@@ -1,6 +1,7 @@
 import { getConsentSingleton } from './consent.js';
 import { getKycSingleton } from './kyc.js';
 
+type MaybePromise<T> = T | Promise<T>;
 type Mode = 'development' | 'production';
 type API = 'auth' | 'fhir' | 'consent' | 'kyc';
 type BaseURL = Record<Mode, Record<API, string>>;
@@ -37,15 +38,9 @@ export interface IHSConfig {
 	 * @default process.env.IHS_KYC_PEM_FILE
 	 */
 	kycPemFile: string;
-
-	/**
-	 * Custom auth store untuk menyimpan atau men-cache auth
-	 * detail. Secara default auth detail di-cache di cluster memory.
-	 */
-	authStore: AuthStore;
 }
 
-type UserConfig = Partial<IHSConfig> | (() => PromiseLike<Partial<IHSConfig>>);
+type UserConfig = Partial<IHSConfig> | (() => MaybePromise<Partial<IHSConfig>>);
 
 type RequestConfig = {
 	type: Exclude<API, 'auth'>;
@@ -58,9 +53,9 @@ export interface AuthStore {
 	 * Autentikasi akan terjadi ketika method
 	 * ini mengembalikan nilai `undefined`
 	 */
-	get(): PromiseLike<AuthDetail | undefined>;
+	get(): MaybePromise<AuthDetail | undefined>;
 
-	set(detail: AuthDetail): PromiseLike<void>;
+	set(detail: AuthDetail): MaybePromise<void>;
 }
 
 const defaultBaseUrls: BaseURL = {
@@ -80,7 +75,7 @@ const defaultBaseUrls: BaseURL = {
 
 export default class IHS {
 	private config: Readonly<IHSConfig> | undefined;
-	private readonly authManager = new AuthManager();
+	private currentAuthStore: AuthStore = new DefaultAuthStore();
 
 	constructor(private readonly userConfig?: UserConfig) {}
 
@@ -89,8 +84,7 @@ export default class IHS {
 			mode: process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
 			clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
 			secretKey: process.env['IHS_SECRET_KEY'] || '',
-			kycPemFile: process.env['IHS_KYC_PEM_FILE'] || '',
-			authStore: new DefaultAuthStore()
+			kycPemFile: process.env['IHS_KYC_PEM_FILE'] || ''
 		};
 
 		const resolveUserConfig =
@@ -102,6 +96,10 @@ export default class IHS {
 				mergedConfig.mode === 'development' ? 'publickey.dev.pem' : 'publickey.pem';
 		}
 		this.config = mergedConfig;
+	}
+
+	set authStore(store: AuthStore) {
+		this.currentAuthStore = store;
 	}
 
 	async getConfig(): Promise<IHSConfig> {
@@ -140,9 +138,8 @@ export default class IHS {
 	 * IHS Note: Rate limit is 1 request per minute after a failed attempt.
 	 */
 	async auth(): Promise<AuthDetail> {
-		if (!this.authManager.isTokenExpired) {
-			return this.authManager.authDetail!;
-		}
+		const currentAuthDetail = await this.currentAuthStore.get();
+		if (currentAuthDetail) return currentAuthDetail;
 
 		const { clientSecret, secretKey, mode } = await this.getConfig();
 		if (!clientSecret || !secretKey) {
@@ -164,8 +161,9 @@ export default class IHS {
 			const messages = await response.text();
 			throw new Error('Authentication failed. ' + messages);
 		}
-		this.authManager.authDetail = await response.json();
-		return this.authManager.authDetail!;
+		const newAuthDetail = await response.json();
+		this.currentAuthStore.set(newAuthDetail);
+		return newAuthDetail;
 	}
 
 	async fhir(
@@ -186,40 +184,37 @@ export default class IHS {
 	}
 }
 
-class DefaultAuthStore implements AuthStore {
-	get(): PromiseLike<AuthDetail | undefined> {
-		throw new Error('Method not implemented.');
+export class DefaultAuthStore implements AuthStore {
+	readonly ANTICIPATION = 300; // seconds
+
+	private authDetail: AuthDetail | undefined;
+
+	get(): AuthDetail | undefined {
+		if (this.authDetail) {
+			const { issued_at, expires_in } = this.authDetail;
+			const issuedAt = parseInt(issued_at, 10);
+			const expiresIn = parseInt(expires_in, 10);
+			if (!issuedAt || !expiresIn) {
+				this.authDetail = undefined;
+				return;
+			}
+
+			// expiration time in milliseconds
+			const expirationTime = issuedAt + expiresIn * 1000;
+
+			// time when the token is considered about to expire
+			const aboutToExpireTime = expirationTime - this.ANTICIPATION * 1000;
+
+			// compare with the current time, if expired set detail to undefined
+			if (aboutToExpireTime <= Date.now()) {
+				this.authDetail = undefined;
+			}
+		}
+		return this.authDetail;
 	}
-	set(detail: AuthDetail): PromiseLike<void> {
-		throw new Error('Method not implemented.');
-	}
-}
 
-/** @internal Don't use it. Only for internal purposes. */
-export class AuthManager {
-	private readonly ANTICIPATION = 300; // seconds
-
-	authDetail: AuthDetail | undefined;
-
-	constructor(private readonly currentTimeProvider?: () => Date) {}
-
-	get isTokenExpired(): boolean {
-		if (!this.authDetail) return true;
-		const issuedAt = parseInt(this.authDetail.issued_at, 10);
-		const expiresIn = parseInt(this.authDetail.expires_in, 10);
-
-		// Calculate the expiration time in milliseconds
-		const expirationTime = issuedAt + expiresIn * 1000;
-
-		// Calculate the anticipation time in milliseconds
-		const anticipationTime = this.ANTICIPATION * 1000;
-
-		// Calculate the time when the token is considered about to expire
-		const aboutToExpireTime = expirationTime - anticipationTime;
-
-		// Compare with the current time
-		const currentTime = this.currentTimeProvider?.()?.getTime() ?? Date.now();
-		return aboutToExpireTime <= currentTime;
+	set(detail: AuthDetail): void {
+		this.authDetail = detail;
 	}
 }
 

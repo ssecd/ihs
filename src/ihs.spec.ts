@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import IHS, { AuthManager, IHSConfig } from './ihs.js';
+import IHS, { AuthDetail, DefaultAuthStore, IHSConfig } from './ihs.js';
 
 describe('ihs', () => {
-	it('instance should be object and valid', () => {
+	it('instance should be object and valid instance', () => {
 		const ihs = new IHS();
 		expect(ihs).toBeTypeOf('object');
 		expect(ihs).toBeInstanceOf(IHS);
@@ -50,29 +50,24 @@ describe('ihs', () => {
 		expect(prodConfig.kycPemFile).toBe('publickey.pem');
 	});
 
-	it('cached auth token should not be expired in expiration period', async () => {
-		const ihs = new IHS();
-		const authDetail = await ihs.auth();
-		expect(authDetail['expires_in']).toBeDefined();
-		expect(authDetail['expires_in']).toBeTypeOf('string');
-		expect(+authDetail['expires_in']).toBeTypeOf('number');
+	it('the DefaultAuthStore should store and handle expiration correctly', async () => {
+		const store = new DefaultAuthStore();
+		expect(store.get()).toBeFalsy();
 
-		const delay = 1.5; //seconds
-		const expiresIn = +authDetail['expires_in']; // 3599 seconds as this test written
-		const anticipation = 300 + delay; // seconds
-		const dateProvider = () => {
-			const current = new Date();
-			return new Date(current.getTime() + (expiresIn - anticipation) * 1000);
-		};
+		const delay = 1; // seconds
+		const expiresIn = 3599; // IHS expiration in seconds as this test written
+		const issuedAt = Date.now() - (expiresIn - (store.ANTICIPATION + delay)) * 1000;
+		const authDetail = {
+			issued_at: String(issuedAt),
+			expires_in: String(expiresIn)
+		} as AuthDetail;
 
-		const authManager = new AuthManager(dateProvider);
-		expect(authManager.isTokenExpired).toBe(true);
-
-		authManager.authDetail = authDetail;
-		expect(authManager.isTokenExpired).toBe(false);
+		store.set(authDetail);
+		expect(store.get()).toBeDefined();
+		expect(store.get()).toEqual(authDetail);
 
 		await new Promise((resolve) => setTimeout(resolve, delay * 1000));
-		expect(authManager.isTokenExpired).toBe(true);
+		expect(store.get()).toBeUndefined();
 	});
 
 	it('get patient resource should be return ok', async () => {
