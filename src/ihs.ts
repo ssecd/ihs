@@ -98,6 +98,10 @@ export default class IHS {
 		this.config = mergedConfig;
 	}
 
+	/**
+	 * Atur custom auth store untuk menyimpan atau men-cache auth detail.
+	 * Secara default menggunakan {@link DefaultAuthStore}.
+	 */
 	set authStore(store: AuthStore) {
 		this.currentAuthStore = store;
 	}
@@ -184,6 +188,10 @@ export default class IHS {
 	}
 }
 
+/**
+ * Implementasi default dari {@link AuthStore} yang menyimpan auth
+ * detail di-cache di cluster/process memory
+ */
 export class DefaultAuthStore implements AuthStore {
 	readonly ANTICIPATION = 300; // seconds
 

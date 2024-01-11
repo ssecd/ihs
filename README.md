@@ -79,6 +79,37 @@ import ihs from './path/to/ihs.js';
 const detail: AuthDetail = await ihs.auth();
 ```
 
+Pada instance IHS, secara default detail autentikasi disimpan ke dalam _process memory_ sebagai cache dan diperiksa waktu kedaluwarsa-nya setiap kali akan melakukan request. Informasi autentikasi perlu di-cache untuk menghindari terjadinya proses autentikasi yang berulang-ulang. Hal ini dikarenakan service autentikasi memiliki _rate limit_ <ins>hanya satu kali request dalam satu menit</ins> (saat dokumentasi ini dibuat). Namun, menyimpan cache di _process memory_ akan menjadi masalah di _[cluster](https://nodejs.org/api/cluster.html) mode_ karena saat ini belum ada dukungan untuk _shared memory_ saat menggunakan _cluster mode_. Untuk masalah ini dapat diatasi dengan membuat _custom store_ untuk menyimpan atau men-cache informasi autentikasi ke database seperti [Redis](https://redis.io/):
+
+```ts
+// file: ihs.ts atau ihs.js
+
+import IHS, { AuthStore } from '@ssecd/ihs';
+import redis from '/path/to/redis-instance.js';
+
+class RedisAuthStore implements AuthStore {
+	private readonly CACHE_KEY = 'my-ihs-auth-cache-key';
+
+	async set(detail: AuthDetail): Promise<void> {
+		const { issued_at, expires_in } = detail;
+		const anticipate = 300; // seconds
+		const ttl = +issued_at + (+expires_in - anticipate) * 1000 - Date.now();
+		await rd.set(this.CACHE_KEY, JSON.stringify(detail), 'PX', ttl);
+	}
+
+	async get(): Promise<AuthDetail | undefined> {
+		const plain = await redis.get(this.CACHE_KEY);
+		return plain ? JSON.parse(plain) : undefined;
+	}
+}
+
+const ihs = new IHS();
+
+ihs.authStore = new RedisAuthStore();
+
+export default ihs;
+```
+
 ### Patient Consent API
 
 Pada Patient Consent, terdapat dua buah method yang di-definisikan sesuai dengan spesifikasi IHS yakni method untuk mendapatkan informasi consent pasien:
