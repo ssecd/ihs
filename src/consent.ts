@@ -56,7 +56,7 @@ export class Consent {
 		 * Nama agen atau petugas yang ingin meminta persetujuan.
 		 */
 		agent: string;
-	}) {
+	}): Promise<fhir4.Consent | fhir4.OperationOutcome> {
 		try {
 			const { patientId: patient_id, ...restData } = data;
 			const response = await this.ihs.request({
