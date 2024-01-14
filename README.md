@@ -148,14 +148,14 @@ Pada API ini, implementasi-nya sangat sederhana dan mengutamakan fleksibilitas y
 
 ```ts
 const response: Response = await ihs.fhir(`/Patient`, {
-	searchParams: [
-		['identifier', 'https://fhir.kemkes.go.id/id/nik|9271060312000001'],
-		['gender', 'male']
-	]
+	searchParams: {
+		identifier: 'https://fhir.kemkes.go.id/id/nik|9271060312000001',
+		gender: 'male'
+	}
 });
 
 if (response.ok) {
-	const patientBundle = await response.json();
+	const patientBundle: fhir4.Bundle<fhir4.Patient> = await response.json();
 	console.info(patientBundle); // Bundle<Patient>
 }
 ```
