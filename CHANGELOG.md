@@ -1,5 +1,11 @@
 # @ssecd/ihs
 
+## 0.1.2
+
+### Patch Changes
+
+- 1b3ddc0: Allow record type for request search params
+
 ## 0.1.1
 
 ### Patch Changes
