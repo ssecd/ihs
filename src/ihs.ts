@@ -45,7 +45,7 @@ type UserConfig = Partial<IHSConfig> | (() => MaybePromise<Partial<IHSConfig>>);
 type RequestConfig = {
 	type: Exclude<API, 'auth'>;
 	path: `/${string}`;
-	searchParams?: URLSearchParams | [string, string][];
+	searchParams?: URLSearchParams | Record<string, string> | [string, string][];
 } & RequestInit;
 
 export interface AuthStore {
@@ -155,10 +155,10 @@ export default class IHS {
 		const response = await fetch(url, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: new URLSearchParams([
-				['client_id', clientSecret],
-				['client_secret', secretKey]
-			])
+			body: new URLSearchParams({
+				client_id: clientSecret,
+				client_secret: secretKey
+			})
 		});
 
 		if (!response.ok) {
