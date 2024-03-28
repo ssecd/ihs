@@ -2,7 +2,7 @@ import { getConsentSingleton } from './consent.js';
 import { getKycSingleton } from './kyc.js';
 
 type MaybePromise<T> = T | Promise<T>;
-type Mode = 'development' | 'production';
+type Mode = 'development' | 'staging' | 'production';
 type API = 'auth' | 'fhir' | 'consent' | 'kyc';
 type BaseURL = Record<Mode, Record<API, string>>;
 
@@ -64,6 +64,12 @@ const defaultBaseUrls: BaseURL = {
 		fhir: `https://api-satusehat-dev.dto.kemkes.go.id/fhir-r4/v1`,
 		consent: `https://api-satusehat-dev.dto.kemkes.go.id/consent/v1`,
 		kyc: `https://api-satusehat-dev.dto.kemkes.go.id/kyc/v1`
+	},
+	staging: {
+		auth: `https://api-satusehat-stg.dto.kemkes.go.id/oauth2/v1`,
+		fhir: `https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1`,
+		consent: `https://api-satusehat-stg.dto.kemkes.go.id/consent/v1`,
+		kyc: `https://api-satusehat-stg.dto.kemkes.go.id/kyc/v1`
 	},
 	production: {
 		auth: `https://api-satusehat.kemkes.go.id/oauth2/v1`,
