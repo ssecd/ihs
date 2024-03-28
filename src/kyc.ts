@@ -52,7 +52,7 @@ export class KYC {
 				const plain = await this.decrypt(cipher, privateKey);
 				return JSON.parse(plain);
 			}
-			return JSON.parse(cipher);
+			throw new Error(cipher);
 		} catch (error) {
 			return this.exception({ error });
 		}
