@@ -1,5 +1,13 @@
 # @ssecd/ihs
 
+## 0.1.3
+
+### Patch Changes
+
+- ae029a3: fix kyc fault response
+- 68bc9ac: enable staging mode
+- 42d8c9c: bump deps
+
 ## 0.1.2
 
 ### Patch Changes
