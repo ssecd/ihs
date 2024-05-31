@@ -1,5 +1,12 @@
 # @ssecd/ihs
 
+## 0.1.4
+
+### Patch Changes
+
+- b8d7d30: Clarify staging implementation
+- ea5f9e2: Update dependencies
+
 ## 0.1.3
 
 ### Patch Changes
