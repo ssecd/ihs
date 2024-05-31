@@ -22,7 +22,7 @@ export interface IHSConfig {
 	secretKey: string;
 
 	/**
-	 * Mode environment API antara `development` ata `production`
+	 * Mode environment API antara `development`, `staging`, atau `production`
 	 *
 	 * @default process.env.NODE_ENV || 'development'
 	 */
@@ -87,7 +87,7 @@ export default class IHS {
 
 	private async applyUserConfig(): Promise<void> {
 		const defaultConfig: Readonly<IHSConfig> = {
-			mode: process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
+			mode: (process.env['NODE_ENV'] as Mode) || 'development',
 			clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
 			secretKey: process.env['IHS_SECRET_KEY'] || '',
 			kycPemFile: process.env['IHS_KYC_PEM_FILE'] || ''
