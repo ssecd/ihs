@@ -22,7 +22,7 @@ export interface IHSConfig {
 	secretKey: string;
 
 	/**
-	 * Mode environment API antara `development` ata `production`
+	 * Mode environment API antara `development`, `staging`, atau `production`
 	 *
 	 * @default process.env.NODE_ENV || 'development'
 	 */
