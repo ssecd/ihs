@@ -63,10 +63,7 @@ export class KYC {
 	 * di mana nilai tersebut akan muncul di SatuSehat Mobile (SSM) dan digunakan
 	 * oleh pasien untuk proses validasi
 	 */
-	async generateVerificationCode(patient: {
-		nik: string;
-		name: string;
-	}): Promise<KycResponse<KycVerificationCodeData | { error: string }>> {
+	async generateVerificationCode(patient: { nik: string; name: string }) {
 		try {
 			const payload = JSON.stringify({
 				metadata: { method: 'request_per_nik' },
@@ -79,7 +76,7 @@ export class KYC {
 				method: 'POST',
 				type: 'kyc'
 			});
-			return response.json();
+			return <KycResponse<KycVerificationCodeData | { error: string }>>await response.json();
 		} catch (error) {
 			return this.exception({ error });
 		}
