@@ -13,7 +13,7 @@ export class Consent {
 	 * @param patientId IHS patient id
 	 * @returns FHIR resource `Consent` or `OperationOutcome`.
 	 */
-	async get(patientId: string): Promise<fhir4.Consent | fhir4.OperationOutcome> {
+	async get(patientId: string) {
 		try {
 			const response = await this.ihs.request({
 				type: 'consent',
@@ -24,7 +24,7 @@ export class Consent {
 			if (response.status >= 500) {
 				throw new Error(await response.text());
 			}
-			return await response.json();
+			return <fhir4.Consent | fhir4.OperationOutcome>await response.json();
 		} catch (error) {
 			return this.exception(error);
 		}
@@ -56,7 +56,7 @@ export class Consent {
 		 * Nama agen atau petugas yang ingin meminta persetujuan.
 		 */
 		agent: string;
-	}): Promise<fhir4.Consent | fhir4.OperationOutcome> {
+	}) {
 		try {
 			const { patientId: patient_id, ...restData } = data;
 			const response = await this.ihs.request({
@@ -70,7 +70,7 @@ export class Consent {
 			if (response.status >= 500) {
 				throw new Error(await response.text());
 			}
-			return await response.json();
+			return <fhir4.Consent | fhir4.OperationOutcome>await response.json();
 		} catch (error) {
 			return this.exception(error);
 		}

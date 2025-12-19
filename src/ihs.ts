@@ -171,7 +171,7 @@ export default class IHS {
 			const messages = await response.text();
 			throw new Error('Authentication failed. ' + messages);
 		}
-		const newAuthDetail = await response.json();
+		const newAuthDetail = <AuthDetail>await response.json();
 		this.currentAuthStore.set(newAuthDetail);
 		return newAuthDetail;
 	}
