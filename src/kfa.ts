@@ -156,29 +156,39 @@ export class KFA {
 		}
 	}
 
-	async getAlkes(params: {
-		/** Isi dengan nomor halaman (page) yang diinginkan. Default to 1 */
-		page?: number;
-
-		/** Isi dengan banyaknya data raw yang ingin ditampilkan dalam satu halaman (page). Default to 50 */
-		size?: number;
-
-		/** Isi dengan state varian produk. Terdapat 2 option dalam varian produk `draft` dan `valid`. */
-		state: 'draft' | 'valid';
-	}) {
+	async getAlkesVariants(params: GetAlkesParams) {
 		try {
 			const response = await this.ihs.request({
 				type: 'kfa3',
 				path: '/alkes/products',
-				body: JSON.stringify({
-					page: params.page || 1,
-					size: params.size || 50,
-					state: params.state
-				})
+				method: 'POST',
+				body: asAlkesRequestBody(params)
 			});
 
 			if (response.status < 500) {
-				const json = <Alkes | ClientError>await response.json();
+				const json = <AlkesResponseBody<AlkesVariantData[]> | ClientError>await response.json();
+				json.success = response.ok;
+				return json;
+			}
+
+			const text = await response.text();
+			throw new Error(text);
+		} catch (error) {
+			return asClientError(error);
+		}
+	}
+
+	async getAlkesTemplates(params: GetAlkesParams) {
+		try {
+			const response = await this.ihs.request({
+				type: 'kfa3',
+				path: '/alkes/template',
+				method: 'POST',
+				body: asAlkesRequestBody(params)
+			});
+
+			if (response.status < 500) {
+				const json = <AlkesResponseBody<AlkesTemplateData[]> | ClientError>await response.json();
 				json.success = response.ok;
 				return json;
 			}
@@ -202,6 +212,25 @@ function asClientError(error: unknown): ClientError {
 		success: false,
 		detail: [{ loc: [], msg, type: 'unknown' }]
 	};
+}
+
+function asAlkesRequestBody(params: GetAlkesParams) {
+	return JSON.stringify({
+		page: params.page || 1,
+		size: params.size || 50,
+		state: params.state,
+		active: params.active,
+		kfa_code: params.kfaCode,
+		reference_code: params.referenceCode,
+		search: params.search,
+		updated_from_date: params.updatedFromDate,
+		updated_to_date: params.updatedToDate,
+		farmalkes_type: params.farmalkesType,
+		category_code: params.categoryCode,
+		sub_category_code: params.subCategoryCode,
+		type_code: params.typeCode,
+		sub_type_code: params.subTypeCode
+	});
 }
 
 interface ClientError {
@@ -404,6 +433,226 @@ interface Product {
 	};
 }
 
-interface Alkes {
+interface GetAlkesParams {
+	/** Isi dengan nomor halaman (page) yang diinginkan. Default to 1 */
+	page?: number;
+
+	/** Isi dengan banyaknya data raw yang ingin ditampilkan dalam satu halaman (page). Default to 50 */
+	size?: number;
+
+	/** Isi dengan state varian produk. Terdapat 2 option dalam varian produk `draft` dan `valid`. */
+	state: 'draft' | 'valid';
+
+	/** Isi `true` atau `false` menunjukan data sudah terhapus atau belum */
+	active: boolean;
+
+	/** Isi dengan kode kfa */
+	kfaCode: string;
+
+	/**
+	 * Isi dengan kode dari NIE BPOM/LKPP yang ada pada field identifier_ids[].code. Dapat diisi
+	 * lebih dari satu yang dibatasi dengan 'koma'. Contoh: AKD 21501912107,2649566.
+	 */
+	referenceCode: string;
+
+	/** Isi dengan display_name, synonym, atau nama_dagang dalam pencarian fuzzy. Contoh: Surgical Gown. */
+	search: string;
+
+	/** Isi dengan tanggal pencarian 'dari' format YYYY-MM-DD. */
+	updatedFromDate: string;
+
+	/** Isi dengan tanggal pencarian 'sampai' format YYYY-MM-DD. */
+	updatedToDate: string;
+
+	/** Isi dengan tipe kode yang sesuai dengan farmalkes_type.code. Dapat diisi lebih dari satu yang dibatasi dengan 'koma'. Contoh: `device,pkrt` */
+	farmalkesType: string;
+
+	/** Isi dengan kode level 1 yang sesuai dengan kategori.code. Dapat diisi lebih dari satu yang dibatasi dengan 'koma'. Contoh: 02,03,04. */
+	categoryCode: string;
+
+	/** Isi dengan kode level 2 yang sesuai dengan sub_kategori.code. Dapat diisi lebih dari satu yang dibatasi dengan 'koma'. Contoh: 0204,0205. */
+	subCategoryCode: string;
+
+	/** Isi dengan kode level 3 yang sesuai dengan jenis.code. Dapat diisi lebih dari satu yang dibatasi dengan 'koma'. Contoh: 0204001,0204002. */
+	typeCode: string;
+
+	/** Isi dengan kode level 4 yang sesuai dengan jenis.code. Dapat diisi lebih dari satu yang dibatasi dengan 'koma'. Contoh: 0204001003,0204001005. */
+	subTypeCode: string;
+}
+
+interface AlkesResponseBody<T> {
 	success: true;
+	status: number;
+	error: boolean;
+	message: string;
+	meta: {
+		item_count: number;
+		page: {
+			is_cursor: boolean;
+			current: number;
+			previous: number;
+			next: number;
+			limit: number;
+			total: number;
+		};
+		sort: string | null;
+		param: string | null;
+		data: T;
+	};
+}
+
+interface AlkesVariantData {
+	kfa_code: string;
+	active: boolean;
+	barcode: string;
+	dapat_dibeli_lkpp: boolean;
+	discontinued: boolean;
+	display_name: string;
+	farmalkes_type: {
+		code: string;
+		name: string;
+		group: string;
+	};
+	fix_price: 81082633;
+	fornas: boolean;
+	identifier_ids: {
+		url: string | null;
+		code: string;
+		name: string;
+		use: string;
+		end_date: string | null;
+		start_date: string | null;
+		source_code: string;
+		source_name: string;
+	}[];
+	jenis: {
+		code: string;
+		name: string;
+	};
+	kategori: {
+		code: string;
+		name: string;
+	};
+	klasifikasi_izin: {
+		code: string;
+		name: string;
+		type: string;
+	};
+	kode_kbki: string;
+	kode_lkpp: string;
+	manufacturer: string;
+	manufacturer_country: {
+		code: string;
+		name: string;
+	};
+	med_dev_kelas_risiko: string;
+	nama_dagang: string;
+	nie: string;
+	product_template: {
+		state: string;
+		kfa_code: string;
+		name: string;
+		bmhp: boolean;
+		synonyms: string;
+	};
+	produksi_buatan: string;
+	registrar: string;
+	registrar_country: {
+		code: string;
+		name: string;
+	};
+	score_bmp: number;
+	score_tkdn: number;
+	score_tkdn_bmp: number;
+	stok_wajib_yankes: boolean;
+	sub_jenis: {
+		code: string;
+		name: string;
+	};
+	sub_kategori: {
+		code: string;
+		name: string;
+	};
+	tayang_lkpp: boolean;
+	ucum: {
+		name: string;
+		ci_code: string;
+		cs_code: string;
+	};
+	uom_name: string;
+	uom_po_name: string;
+	updated_at: string;
+	variant_desc_farmalkes: string;
+	variant_desc_usage: string;
+	variant_desc_warning: string;
+	variant_side_effect: string;
+	volume: number;
+	weight: number;
+	product_state: string;
+	replacement: {
+		product: {
+			reason: string;
+			kfa_code: string;
+		};
+		template: {
+			reason: string;
+			kfa_code: string;
+		};
+	};
+}
+
+interface AlkesTemplateData {
+	kfa_code: string;
+	active: boolean;
+	bmhp: boolean;
+	desc_farmalkes: string;
+	desc_usage: string;
+	desc_warning: string;
+	farmalkes_hscode: string;
+	farmalkes_type: {
+		code: string;
+		name: string;
+		group: string;
+	};
+	fornas: boolean;
+	jenis: {
+		code: string;
+		name: string;
+	};
+	kategori: {
+		code: string;
+		name: string;
+	};
+	klasifikasi_izin: {
+		code: string;
+		name: string;
+		type: string;
+	};
+	med_dev_kelas_risiko: string;
+	name: string;
+	replacement: {
+		name: string;
+		reason: string;
+		kfa_code: string;
+	};
+	side_effect: string;
+	state: string;
+	stok_wajib_yankes: boolean;
+	sub_jenis: {
+		code: string;
+		name: string;
+	};
+	sub_kategori: {
+		code: string;
+		name: string;
+	};
+	synonyms: string;
+	ucum: {
+		name: string;
+		ci_code: string;
+		cs_code: string;
+	};
+	uom_name: string;
+	uom_po_name: string;
+	updated_at: string;
 }

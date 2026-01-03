@@ -2,14 +2,17 @@ accesstoken
 algoritma
 Alkes
 Autentikasi
+bmhp
 dekripsi
 diakses
 enkripsi
 farmalkes
 fasyankes
 fhir
+fornas
 hscode
 Inisialisasi
+kbki
 kemkes
 kriptografi
 lkpp
@@ -17,6 +20,7 @@ OAEP
 OPTIN
 OPTOUT
 PKCS
+pkrt
 publickey
 rxterm
 Silampari
