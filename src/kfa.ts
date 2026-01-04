@@ -6,7 +6,8 @@ export class KFA {
 	constructor(private readonly ihs: IHS) {}
 
 	/**
-	 * Mendapatkan harga produk JKN
+	 * Mendapatkan harga produk JKN.
+	 * Menggunakan RestAPI KFA versi pertama.
 	 */
 	async getPriceJKN(params: {
 		/** Isi dengan kode produk KFA yang diinginkan. */
@@ -59,7 +60,8 @@ export class KFA {
 	}
 
 	/**
-	 * Mendapatkan detail produk
+	 * Mendapatkan detail produk.
+	 * Menggunakan RestAPI KFA versi 2.
 	 */
 	async getProductDetail(params: {
 		/**
@@ -96,7 +98,8 @@ export class KFA {
 	}
 
 	/**
-	 * Pencarian daftar produk dengan paginasi
+	 * Pencarian daftar produk dengan paginasi.
+	 * Menggunakan RestAPI KFA versi 2.
 	 */
 	async getProducts(params: {
 		/** Isi dengan nomor halaman (page) yang diinginkan. Default to 1 */
@@ -156,6 +159,10 @@ export class KFA {
 		}
 	}
 
+	/**
+	 * Mendapatkan varian alat kesehatan.
+	 * Menggunakan RestAPI KFA versi 3.
+	 */
 	async getAlkesVariants(params: GetAlkesParams) {
 		try {
 			const response = await this.ihs.request({
@@ -179,6 +186,10 @@ export class KFA {
 		}
 	}
 
+	/**
+	 * Mendapatkan template alat kesehatan.
+	 * Menggunakan RestAPI KFA versi 3.
+	 */
 	async getAlkesTemplates(params: GetAlkesParams) {
 		try {
 			const response = await this.ihs.request({
