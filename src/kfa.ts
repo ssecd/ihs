@@ -248,24 +248,26 @@ interface PriceJKN {
 	page: number;
 	limit: number;
 	items: {
-		data: {
-			product_template_name: string;
-			kfa_code: string;
-			document_ref: string;
-			active: boolean;
-			region_name: string;
-			region_code: string;
-			start_date: string; // ISO date string (YYYY-MM-DD)
-			end_date: string | null;
-			price_unit: number;
-			uom_name: string;
-			updated_at: string; // datetime string (YYYY-MM-DD HH:mm:ss)
-			uom_pack: string[];
-			province: {
-				province_code: string;
-				province_name: string;
-			}[];
-		}[];
+		data:
+			| {
+					product_template_name: string;
+					kfa_code: string;
+					document_ref: string;
+					active: boolean;
+					region_name: string;
+					region_code: string;
+					start_date: string;
+					end_date: string | null;
+					price_unit: number;
+					uom_name: string;
+					updated_at: string;
+					uom_pack: string[];
+					province: {
+						province_code: string;
+						province_name: string;
+					}[];
+			  }[]
+			| null;
 	};
 }
 
