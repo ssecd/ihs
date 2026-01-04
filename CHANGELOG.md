@@ -1,5 +1,13 @@
 # @ssecd/ihs
 
+## 0.1.5
+
+### Patch Changes
+
+- 1fe04eb: Update and organize dependencies
+- 7856e9b: Implement missing KFA api
+- f9b8734: Fix dependabot alert 9
+
 ## 0.1.4
 
 ### Patch Changes
