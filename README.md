@@ -223,11 +223,18 @@ File _public key_ atau _server key_ dapat di-unduh di [sini](https://github.com/
 API KFA atau Kamus Farmasi & Alat Kesehatan ini diimplementasikan sesuai dengan spesifikasi IHS pada Playbook yang mana memiliki beberapa versi yakni `kfa`, `kfa-v2`, dan `kfa-v3`. Semua RestAPI yang tersedia sudah dibungkus pada method sehingga mempermudah pemanggilan API dan penulisan tipe request dan response.
 
 ```ts
-const result = await ihs.kfa.getProducts({ ... });
-if (result.error) {
+const result1 = await ihs.kfa.getProducts({ ... });
+if (result1.error) {
 	// result == ClientError
 } else {
 	// result == Product
+}
+
+const result2 = await ihs.kfa.getAlkesVariants({ ... });
+if (result2.error) {
+	// result == AlkesResponseBody<null>
+} else {
+	// result == AlkesResponseBody<AlkesVariantData[]>
 }
 ```
 
