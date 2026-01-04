@@ -1,9 +1,10 @@
 import { getConsentSingleton } from './consent.js';
+import { getKFASingleton } from './kfa.js';
 import { getKycSingleton } from './kyc.js';
 
 type MaybePromise<T> = T | Promise<T>;
 type Mode = 'development' | 'staging' | 'production';
-type API = 'auth' | 'fhir' | 'consent' | 'kyc';
+type API = 'auth' | 'fhir' | 'consent' | 'kyc' | 'kfa' | 'kfa2' | 'kfa3';
 type BaseURL = Record<Mode, Record<API, string>>;
 
 export interface IHSConfig {
@@ -63,19 +64,28 @@ const defaultBaseUrls: BaseURL = {
 		auth: `https://api-satusehat-dev.dto.kemkes.go.id/oauth2/v1`,
 		fhir: `https://api-satusehat-dev.dto.kemkes.go.id/fhir-r4/v1`,
 		consent: `https://api-satusehat-dev.dto.kemkes.go.id/consent/v1`,
-		kyc: `https://api-satusehat-dev.dto.kemkes.go.id/kyc/v1`
+		kyc: `https://api-satusehat-dev.dto.kemkes.go.id/kyc/v1`,
+		kfa: `https://api-satusehat-dev.dto.kemkes.go.id/kfa`,
+		kfa2: `https://api-satusehat-dev.dto.kemkes.go.id/kfa-v2`,
+		kfa3: `https://api-satusehat-dev.dto.kemkes.go.id/kfa-v3`
 	},
 	staging: {
 		auth: `https://api-satusehat-stg.dto.kemkes.go.id/oauth2/v1`,
 		fhir: `https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1`,
 		consent: `https://api-satusehat-stg.dto.kemkes.go.id/consent/v1`,
-		kyc: `https://api-satusehat-stg.dto.kemkes.go.id/kyc/v1`
+		kyc: `https://api-satusehat-stg.dto.kemkes.go.id/kyc/v1`,
+		kfa: `https://api-satusehat-stg.dto.kemkes.go.id/kfa`,
+		kfa2: `https://api-satusehat-stg.dto.kemkes.go.id/kfa-v2`,
+		kfa3: `https://api-satusehat-stg.dto.kemkes.go.id/kfa-v3`
 	},
 	production: {
 		auth: `https://api-satusehat.kemkes.go.id/oauth2/v1`,
 		fhir: `https://api-satusehat.kemkes.go.id/fhir-r4/v1`,
 		consent: `https://api-satusehat.kemkes.go.id/consent/v1`,
-		kyc: `https://api-satusehat.kemkes.go.id/kyc/v1`
+		kyc: `https://api-satusehat.kemkes.go.id/kyc/v1`,
+		kfa: `https://api-satusehat.kemkes.go.id/kfa`,
+		kfa2: `https://api-satusehat.kemkes.go.id/kfa-v2`,
+		kfa3: `https://api-satusehat.kemkes.go.id/kfa-v3`
 	}
 } as const;
 
@@ -123,7 +133,7 @@ export default class IHS {
 	}
 
 	/**
-	 * Request ke API `consent`, `fhir`, dan `kyc` yang dapat diatur
+	 * Request ke API `consent`, `fhir`, `kyc`, dan `kfa` yang dapat diatur
 	 * pada property `type` pada parameter `config`. Autentikasi sudah
 	 * ditangani secara otomatis pada method ini.
 	 */
@@ -143,7 +153,7 @@ export default class IHS {
 	/**
 	 * Autentikasi menggunakan `clientSecret` dan `secretKey` dengan kembalian
 	 * berupa detail autentikasi termasuk `access_token` yang digunakan untuk
-	 * request ke API `consent`, `fhir`, dan `kyc`.
+	 * request ke API `consent`, `fhir`, `kyc`, dan `kfa`.
 	 *
 	 * IHS Note: Rate limit is 1 request per minute after a failed attempt.
 	 */
@@ -190,6 +200,11 @@ export default class IHS {
 
 	get kyc() {
 		const instance = getKycSingleton(this);
+		return instance;
+	}
+
+	get kfa() {
+		const instance = getKFASingleton(this);
 		return instance;
 	}
 }

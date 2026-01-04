@@ -110,7 +110,7 @@ ihs.authStore = new RedisAuthStore();
 export default ihs;
 ```
 
-### Patient Consent API
+### Patient Consent
 
 Pada Patient Consent, terdapat dua buah method yang di-definisikan sesuai dengan spesifikasi IHS yakni method untuk mendapatkan informasi consent pasien:
 
@@ -142,7 +142,7 @@ if (result.resourceType === 'Consent') {
 
 Setiap method pada Patient Consent API ini memiliki nilai kembalian FHIR resource `Consent` jika request sukses dan `OperationOutcome` jika request gagal.
 
-### FHIR API
+### FHIR
 
 Pada API ini, implementasi-nya sangat sederhana dan mengutamakan fleksibilitas yakni dengan hanya mengembalikan `Response` object sehingga response sepenuhnya di-_handle_ pengguna.
 
@@ -160,7 +160,7 @@ if (response.ok) {
 }
 ```
 
-### KYC API
+### KYC
 
 Pada API ini, terdapat dua buah method yakni method untuk melakukan proses Generate URL Validasi di mana URL digunakan untuk melakukan verifikasi akun SatuSehat melalui SatuSehat Mobile:
 
@@ -217,6 +217,26 @@ Proses enkripsi dan dekripsi pesan dilakukan dengan menggunakan algoritma `aes-2
 Proses kriptografi pada API ini memerlukan file _server key_ atau _public key_ dengan format `.pem`. File _public key_ ini dapat disesuaikan lokasinya dengan mengatur `kycPemFile` pada config instance atau class `IHS` yang secara default bernama `publickey.dev.pem` pada mode `development` atau `publickey.pem` pada mode `production` dan berada di _working directory_ atau folder di mana API dijalankan.
 
 File _public key_ atau _server key_ dapat di-unduh di [sini](https://github.com/ssecd/ihs/issues/2).
+
+### KFA
+
+API KFA atau Kamus Farmasi & Alat Kesehatan ini diimplementasikan sesuai dengan spesifikasi IHS pada Playbook yang mana memiliki beberapa versi yakni `kfa`, `kfa-v2`, dan `kfa-v3`. Semua RestAPI yang tersedia sudah dibungkus pada method sehingga mempermudah pemanggilan API dan penulisan tipe request dan response.
+
+```ts
+const result1 = await ihs.kfa.getProducts({ ... });
+if (result1.error) {
+	// result == ClientError
+} else {
+	// result == Product
+}
+
+const result2 = await ihs.kfa.getAlkesVariants({ ... });
+if (result2.error) {
+	// result == AlkesResponseBody<null>
+} else {
+	// result == AlkesResponseBody<AlkesVariantData[]>
+}
+```
 
 ## Konfigurasi
 
