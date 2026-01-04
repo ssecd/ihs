@@ -16,7 +16,7 @@ export class KFA {
 		/** Isi dengan nomor halaman (page) yang diinginkan. Default to 1 */
 		page?: number;
 
-		/** Isi dengan banyaknya data yang ingin ditampilkan dalam satu halaman (page). Default to 50 */
+		/** Isi dengan banyaknya data yang ingin ditampilkan dalam satu halaman (page). Default to 10 */
 		limit?: number;
 
 		/**
@@ -39,7 +39,7 @@ export class KFA {
 				path: '/farmalkes-price-jkn',
 				searchParams: {
 					page: String(params.page || 1),
-					limit: String(params.limit || 50),
+					limit: String(params.limit || 10),
 					kfa_code: params.kfaCode,
 					region_code: params.regionCode || '',
 					document_ref: params.documentRef || ''
@@ -105,7 +105,7 @@ export class KFA {
 		/** Isi dengan nomor halaman (page) yang diinginkan. Default to 1 */
 		page?: number;
 
-		/** Isi dengan banyaknya data yang ingin ditampilkan dalam satu halaman (page). Default to 50 */
+		/** Isi dengan banyaknya data yang ingin ditampilkan dalam satu halaman (page). Default to 10 */
 		size?: number;
 
 		/** Isi dengan kategori/jenis produk yang diinginkan. Contoh: farmasi. */
@@ -135,7 +135,7 @@ export class KFA {
 				path: '/products/all',
 				searchParams: {
 					page: String(params.page || 1),
-					size: String(params.size || 50),
+					size: String(params.size || 10),
 					product_type: params.productType,
 					from_date: params.fromDate || '',
 					to_date: params.toDate || '',
@@ -163,7 +163,7 @@ export class KFA {
 	 * Mendapatkan varian alat kesehatan.
 	 * Menggunakan RestAPI KFA versi 3.
 	 */
-	async getAlkesVariants(params: GetAlkesParams) {
+	async getAlkesVariants(params?: GetAlkesParams) {
 		try {
 			const response = await this.ihs.request({
 				type: 'kfa3',
@@ -190,7 +190,7 @@ export class KFA {
 	 * Mendapatkan template alat kesehatan.
 	 * Menggunakan RestAPI KFA versi 3.
 	 */
-	async getAlkesTemplates(params: GetAlkesParams) {
+	async getAlkesTemplates(params?: GetAlkesParams) {
 		try {
 			const response = await this.ihs.request({
 				type: 'kfa3',
@@ -237,10 +237,12 @@ function asAlkesError(error: unknown): AlkesResponseBody<null> {
 	};
 }
 
-function asAlkesRequestBody(params: GetAlkesParams) {
+function asAlkesRequestBody(params?: GetAlkesParams) {
+	const defaultParams = { page: 1, size: 10 };
+	if (!params) return JSON.stringify(defaultParams);
 	return JSON.stringify({
-		page: params.page || 1,
-		size: params.size || 50,
+		page: params.page || defaultParams.page,
+		size: params.size || defaultParams.size,
 		state: params.state,
 		active: params.active,
 		kfa_code: params.kfaCode,
@@ -497,47 +499,47 @@ interface GetAlkesParams {
 	/** Isi dengan nomor halaman (page) yang diinginkan. Default to 1 */
 	page?: number;
 
-	/** Isi dengan banyaknya data raw yang ingin ditampilkan dalam satu halaman (page). Default to 50 */
+	/** Isi dengan banyaknya data raw yang ingin ditampilkan dalam satu halaman (page). Default to 10 */
 	size?: number;
 
 	/** Isi dengan state varian produk. Terdapat 2 option dalam varian produk `draft` dan `valid`. */
-	state: 'draft' | 'valid';
+	state?: 'draft' | 'valid';
 
 	/** Isi `true` atau `false` menunjukan data sudah terhapus atau belum */
-	active: boolean;
+	active?: boolean;
 
 	/** Isi dengan kode kfa */
-	kfaCode: string;
+	kfaCode?: string;
 
 	/**
 	 * Isi dengan kode dari NIE BPOM/LKPP yang ada pada field identifier_ids[].code. Dapat diisi
 	 * lebih dari satu yang dibatasi dengan 'koma'. Contoh: AKD 21501912107,2649566.
 	 */
-	referenceCode: string;
+	referenceCode?: string;
 
 	/** Isi dengan display_name, synonym, atau nama_dagang dalam pencarian fuzzy. Contoh: Surgical Gown. */
-	search: string;
+	search?: string;
 
 	/** Isi dengan tanggal pencarian 'dari' format YYYY-MM-DD. */
-	updatedFromDate: string;
+	updatedFromDate?: string;
 
 	/** Isi dengan tanggal pencarian 'sampai' format YYYY-MM-DD. */
-	updatedToDate: string;
+	updatedToDate?: string;
 
 	/** Isi dengan tipe kode yang sesuai dengan farmalkes_type.code. Dapat diisi lebih dari satu yang dibatasi dengan 'koma'. Contoh: `device,pkrt` */
-	farmalkesType: string;
+	farmalkesType?: string;
 
 	/** Isi dengan kode level 1 yang sesuai dengan kategori.code. Dapat diisi lebih dari satu yang dibatasi dengan 'koma'. Contoh: 02,03,04. */
-	categoryCode: string;
+	categoryCode?: string;
 
 	/** Isi dengan kode level 2 yang sesuai dengan sub_kategori.code. Dapat diisi lebih dari satu yang dibatasi dengan 'koma'. Contoh: 0204,0205. */
-	subCategoryCode: string;
+	subCategoryCode?: string;
 
 	/** Isi dengan kode level 3 yang sesuai dengan jenis.code. Dapat diisi lebih dari satu yang dibatasi dengan 'koma'. Contoh: 0204001,0204002. */
-	typeCode: string;
+	typeCode?: string;
 
 	/** Isi dengan kode level 4 yang sesuai dengan jenis.code. Dapat diisi lebih dari satu yang dibatasi dengan 'koma'. Contoh: 0204001003,0204001005. */
-	subTypeCode: string;
+	subTypeCode?: string;
 }
 
 type AlkesResponseBody<T> = {
