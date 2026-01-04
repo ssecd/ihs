@@ -47,7 +47,7 @@ export class KFA {
 
 			if (response.status < 500) {
 				const json = <PriceJKN | ClientError>await response.json();
-				json.success = response.ok;
+				json.error = !response.ok;
 				return json;
 			}
 
@@ -84,7 +84,7 @@ export class KFA {
 
 			if (response.status < 500) {
 				const json = <ProductDetail | ClientError>await response.json();
-				json.success = response.ok;
+				json.error = !response.ok;
 				return json;
 			}
 
@@ -145,7 +145,7 @@ export class KFA {
 
 			if (response.status < 500) {
 				const json = <Product | ClientError>await response.json();
-				json.success = response.ok;
+				json.error = !response.ok;
 				return json;
 			}
 
@@ -162,19 +162,20 @@ export class KFA {
 				type: 'kfa3',
 				path: '/alkes/products',
 				method: 'POST',
+				headers: { 'content-type': 'application/json' },
 				body: asAlkesRequestBody(params)
 			});
 
 			if (response.status < 500) {
-				const json = <AlkesResponseBody<AlkesVariantData[]> | ClientError>await response.json();
-				json.success = response.ok;
+				const json = <AlkesResponseBody<AlkesVariantData[]>>await response.json();
+				json.error = !response.ok;
 				return json;
 			}
 
 			const text = await response.text();
 			throw new Error(text);
 		} catch (error) {
-			return asClientError(error);
+			return asAlkesError(error);
 		}
 	}
 
@@ -184,19 +185,20 @@ export class KFA {
 				type: 'kfa3',
 				path: '/alkes/template',
 				method: 'POST',
+				headers: { 'content-type': 'application/json' },
 				body: asAlkesRequestBody(params)
 			});
 
 			if (response.status < 500) {
-				const json = <AlkesResponseBody<AlkesTemplateData[]> | ClientError>await response.json();
-				json.success = response.ok;
+				const json = <AlkesResponseBody<AlkesTemplateData[]>>await response.json();
+				json.error = !response.ok;
 				return json;
 			}
 
 			const text = await response.text();
 			throw new Error(text);
 		} catch (error) {
-			return asClientError(error);
+			return asAlkesError(error);
 		}
 	}
 }
@@ -209,8 +211,18 @@ export function getKFASingleton(...params: ConstructorParameters<typeof KFA>) {
 function asClientError(error: unknown): ClientError {
 	const msg = error instanceof Error ? error.message : JSON.stringify(error);
 	return {
-		success: false,
+		error: true,
 		detail: [{ loc: [], msg, type: 'unknown' }]
+	};
+}
+
+function asAlkesError(error: unknown): AlkesResponseBody<null> {
+	const msg = error instanceof Error ? error.message : JSON.stringify(error);
+	return {
+		status: 500,
+		error: true,
+		message: msg,
+		data: null
 	};
 }
 
@@ -234,7 +246,7 @@ function asAlkesRequestBody(params: GetAlkesParams) {
 }
 
 interface ClientError {
-	success: false;
+	error: true;
 	detail: {
 		loc: string[];
 		msg: string;
@@ -243,7 +255,7 @@ interface ClientError {
 }
 
 interface PriceJKN {
-	success: true;
+	error: false;
 	total: number;
 	page: number;
 	limit: number;
@@ -272,7 +284,7 @@ interface PriceJKN {
 }
 
 interface ProductDetail {
-	success: true;
+	error: false;
 	search_code: string;
 	search_identifier: string;
 	result: {
@@ -285,26 +297,25 @@ interface ProductDetail {
 
 		farmalkes_type: { code: string; name: string; group: string };
 		ucum: { cs_code: string; name: string };
+		uom: { cs_code?: string; name: string };
 
 		dosage_form: ProductDetail['result']['farmalkes_type'];
 		controlled_drug: ProductDetail['result']['farmalkes_type'];
 		rute_pemberian: ProductDetail['result']['farmalkes_type'];
-
-		uom: { name: string };
 
 		produksi_buatan: string;
 		nie: string;
 		nama_dagang: string;
 		manufacturer: string;
 		registrar: string;
-		generik: boolean;
-		rxterm: string;
+		generik: boolean | null;
+		rxterm: number;
 		dose_per_unit: number;
 		fix_price: number;
 		het_price: number;
 		farmalkes_hscode: string | null;
-		tayang_lkpp: boolean;
-		kode_lkpp: string;
+		tayang_lkpp: boolean | null;
+		kode_lkpp: string | null;
 		score_tkdn: number | null;
 		score_bmp: number | null;
 		score_tkdn_bmp: number | null;
@@ -324,7 +335,7 @@ interface ProductDetail {
 			name: string;
 			code: string;
 			level: string;
-			parent_code: string | boolean;
+			parent_code: string | null;
 			comment: string | null;
 		};
 
@@ -372,20 +383,40 @@ interface ProductDetail {
 			updated_at: string;
 		}[];
 
-		dosage_usage: string[];
+		dosage_usage: {
+			qty: number;
+			name: string;
+			period: number;
+			qty_uom: string;
+			category: string;
+			duration: number;
+			qty_high: number;
+			qty_ucum: number | null;
+			use_ucum: boolean;
+			frequency: number;
+			updated_at: string;
+			period_ucum: string;
+			display_name: string;
+			duration_max: number;
+			duration_ucum: string;
+			frequency_max: number;
+			body_weight_max: number;
+			body_weight_min: number;
+		}[];
+
 		cvx_info: Record<string, unknown>;
 
 		replacement: {
-			product: string | null;
-			template: string | null;
+			product: { name: string | null; reason: string | null; kfa_code: string | null } | null;
+			template: { name: string | null; reason: string | null; kfa_code: string | null } | null;
 		};
 
-		tags: string[];
+		tags: { code: string | null; name: string | null }[];
 	};
 }
 
 interface Product {
-	success: true;
+	error: false;
 	total: number;
 	page: number;
 	size: number;
@@ -403,34 +434,50 @@ interface Product {
 			nama_dagang: string;
 			manufacturer: string | null;
 			registrar: string | null;
-			generik: boolean;
-			rxterm: string | null;
+			generik: boolean | null;
+			rxterm: number | null;
 			dose_per_unit: 1;
-			fix_price: 40499000.0;
-			het_price: string | null;
+			fix_price: number;
+			het_price: number | null;
 			farmalkes_hscode: string | null;
 			tayang_lkpp: boolean;
 			kode_lkpp: string | null;
-			net_weight: string | null;
+			net_weight: number | null;
 			net_weight_uom_name: string;
 			volume: string | null;
 			volume_uom_name: string;
 			uom: { name: string };
-			dosage_form: { code: string | boolean; name: string | boolean };
+			dosage_form: { code: string | null; name: string | null };
 			product_template: {
 				kfa_code: string;
 				name: string;
 				state: string;
+				bmhp: boolean | null;
 				active: boolean;
 				display_name: string;
 				updated_at: string;
 			};
-			active_ingredients: string[];
+			active_ingredients: {
+				state: string;
+				active: boolean;
+				kfa_code: string;
+				zat_aktif: string;
+				updated_at: string;
+				kekuatan_zat_aktif: string;
+			}[];
 			replacement: {
-				product: string | null;
-				template: string | null;
+				product: { name: string | null; reason: string | null; kfa_code: string | null } | null;
+				template: { name: string | null; reason: string | null; kfa_code: string | null } | null;
 			};
-			tags: string[];
+			tags: { code: string | null; name: string | null }[];
+			paket_obat: {
+				kfa_code: string | null;
+				qty: number;
+				uom_name: string | null;
+				ucum_cs_code: string | null;
+				ucum_name: string | null;
+			}[];
+			total_data: number;
 		}[];
 	};
 }
@@ -482,26 +529,29 @@ interface GetAlkesParams {
 	subTypeCode: string;
 }
 
-interface AlkesResponseBody<T> {
-	success: true;
+type AlkesResponseBody<T> = {
 	status: number;
-	error: boolean;
 	message: string;
-	meta: {
-		item_count: number;
-		page: {
-			is_cursor: boolean;
-			current: number;
-			previous: number;
-			next: number;
-			limit: number;
-			total: number;
-		};
-		sort: string | null;
-		param: string | null;
-		data: T;
-	};
-}
+	data: T | null;
+} & (
+	| { error: true }
+	| {
+			error: false;
+			meta: {
+				item_count: number;
+				page: {
+					is_cursor: boolean;
+					current: number;
+					previous: number;
+					next: number;
+					limit: number;
+					total: number;
+				};
+				sort: string | null;
+				param: string | null;
+			};
+	  }
+);
 
 interface AlkesVariantData {
 	kfa_code: string;
@@ -515,7 +565,7 @@ interface AlkesVariantData {
 		name: string;
 		group: string;
 	};
-	fix_price: 81082633;
+	fix_price: number;
 	fornas: boolean;
 	identifier_ids: {
 		url: string | null;
@@ -600,6 +650,12 @@ interface AlkesVariantData {
 			reason: string;
 			kfa_code: string;
 		};
+	};
+	lkpp_status: {
+		freezed: boolean;
+		reason_code: string | null;
+		reason: string | null;
+		remark: string | null;
 	};
 }
 

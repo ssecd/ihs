@@ -17,6 +17,6 @@ describe('kfa', () => {
 
 	it('get price jkn', async () => {
 		const result = await kfa.getPriceJKN({ kfaCode: '' });
-		expect(result.success).toBe(true);
+		expect(result.error).toBe(false);
 	});
 });
