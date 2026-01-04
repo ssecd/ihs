@@ -1,7 +1,7 @@
 {
 	"name": "@ssecd/ihs",
 	"displayName": "IHS",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"description": "Indonesia Health Service Helper",
 	"repository": {
 		"type": "git",
