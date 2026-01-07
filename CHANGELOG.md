@@ -1,5 +1,12 @@
 # @ssecd/ihs
 
+## 0.1.6
+
+### Patch Changes
+
+- 54ab359: Remove `development` mode
+- efc3512: Allow requests to be made directly to the base URL
+
 ## 0.1.5
 
 ### Patch Changes
