@@ -1,10 +1,13 @@
 Indonesia Health Service API Helpers
 
-- ✅ FHIR API
-- ✅ Patient Consent API
-- ✅ KYC API
 - ✅ Automatic authentication and token invalidation
 - ✅ TypeSafe and Autocomplete-Enabled API
+- ✅ FHIR
+- ✅ Patient Consent
+- ✅ KYC
+- ✅ KFA
+- 🏗️ MSI
+- 🏗️ Wilayah
 
 ## Instalasi
 
