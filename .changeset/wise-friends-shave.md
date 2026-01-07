@@ -2,4 +2,4 @@
 '@ssecd/ihs': patch
 ---
 
-Allow request directly using base url
+Allow requests to be made directly to the base URL
