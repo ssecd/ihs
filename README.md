@@ -241,6 +241,10 @@ if (result2.error) {
 }
 ```
 
+### `ihs.request({ ... })`
+
+Request ke RestAPI secara langsung menggunakan method `request()` dari instansi `IHS`.
+
 ## Konfigurasi
 
 Konfigurasi mengikuti interface berikut:

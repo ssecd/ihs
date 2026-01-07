@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import IHS, { AuthDetail, DefaultAuthStore, IHSConfig } from './ihs.js';
+
+let ihs: IHS;
+
+beforeAll(() => {
+	ihs = new IHS();
+});
 
 describe('ihs', () => {
 	it('instance should be object and valid instance', () => {
@@ -70,8 +76,25 @@ describe('ihs', () => {
 		expect(store.get()).toBeUndefined();
 	});
 
-	it('get patient resource should be return ok', async () => {
-		const ihs = new IHS();
+	it(`request with base type should be return 200`, async () => {
+		const response = await ihs.request({
+			type: 'base',
+			path: '/masterdata/v1/mastersaranaindex/mastersarana',
+			searchParams: {
+				limit: '1',
+				page: '1',
+				jenis_sarana: '121'
+			}
+		});
+		expect(response.ok).toBe(true);
+
+		const result = await response.json();
+		expect(result.status_code).toBe(200);
+		expect(result.page).toBe(1);
+		expect(result.data.length).toBe(1);
+	});
+
+	it('get patient resource should be valid resource type', async () => {
 		const response = await ihs.fhir(`/Patient/${process.env.TEST_PATIENT_ID}`);
 		expect(response.ok).toBe(true);
 
