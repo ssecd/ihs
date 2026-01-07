@@ -3,9 +3,9 @@ import { getKFASingleton } from './kfa.js';
 import { getKycSingleton } from './kyc.js';
 
 type MaybePromise<T> = T | Promise<T>;
-type Mode = 'development' | 'staging' | 'production';
+type Mode = 'sandbox' | 'production';
 type API = 'auth' | 'fhir' | 'consent' | 'kyc' | 'kfa' | 'kfa2' | 'kfa3';
-type BaseURL = Record<Mode, Record<API, string>>;
+type EndpointURL = Record<Mode, Record<API, string>>;
 
 export interface IHSConfig {
 	/**
@@ -23,9 +23,9 @@ export interface IHSConfig {
 	secretKey: string;
 
 	/**
-	 * Mode environment API antara `development`, `staging`, atau `production`
+	 * Mode environment API antara `sandbox` atau `production`
 	 *
-	 * @default process.env.NODE_ENV || 'development'
+	 * @default process.env.NODE_ENV || 'sandbox'
 	 */
 	mode: Mode;
 
@@ -33,7 +33,7 @@ export interface IHSConfig {
 	 * Path atau lokasi public key KYC dari SatuSehat. Dapat
 	 * menggunakan absolute atau relative path. Secara default
 	 * akan membaca nilai environment variable IHS_KYC_PEM_FILE
-	 * atau `publickey.dev.pem` pada mode `development` dan
+	 * atau `publickey.sandbox.pem` pada mode `sandbox` dan
 	 * `publickey.pem` pada mode `production`
 	 *
 	 * @default process.env.IHS_KYC_PEM_FILE
@@ -45,7 +45,7 @@ type UserConfig = Partial<IHSConfig> | (() => MaybePromise<Partial<IHSConfig>>);
 
 type RequestConfig = {
 	type: Exclude<API, 'auth'>;
-	path: `/${string}`;
+	path: string;
 	searchParams?: URLSearchParams | Record<string, string> | [string, string][];
 } & RequestInit;
 
@@ -59,35 +59,38 @@ export interface AuthStore {
 	set(detail: AuthDetail): MaybePromise<void>;
 }
 
-const defaultBaseUrls: BaseURL = {
-	development: {
-		auth: `https://api-satusehat-dev.dto.kemkes.go.id/oauth2/v1`,
-		fhir: `https://api-satusehat-dev.dto.kemkes.go.id/fhir-r4/v1`,
-		consent: `https://api-satusehat-dev.dto.kemkes.go.id/consent/v1`,
-		kyc: `https://api-satusehat-dev.dto.kemkes.go.id/kyc/v1`,
-		kfa: `https://api-satusehat-dev.dto.kemkes.go.id/kfa`,
-		kfa2: `https://api-satusehat-dev.dto.kemkes.go.id/kfa-v2`,
-		kfa3: `https://api-satusehat-dev.dto.kemkes.go.id/kfa-v3`
+const defaultBaseUrls: Record<Mode, string> = {
+	sandbox: 'https://api-satusehat-stg.dto.kemkes.go.id',
+	production: 'https://api-satusehat.kemkes.go.id'
+};
+
+const defaultEndpointUrls = Object.entries(defaultBaseUrls).reduce(
+	(acc, [mode, url]) => {
+		acc[mode as Mode] = {
+			auth: `${url}/oauth2/v1`,
+			fhir: `${url}/fhir-r4/v1`,
+			consent: `${url}/consent/v1`,
+			kyc: `${url}/kyc/v1`,
+			kfa: `${url}/kfa`,
+			kfa2: `${url}/kfa-v2`,
+			kfa3: `${url}/kfa-v3`
+		};
+		return acc;
 	},
-	staging: {
-		auth: `https://api-satusehat-stg.dto.kemkes.go.id/oauth2/v1`,
-		fhir: `https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1`,
-		consent: `https://api-satusehat-stg.dto.kemkes.go.id/consent/v1`,
-		kyc: `https://api-satusehat-stg.dto.kemkes.go.id/kyc/v1`,
-		kfa: `https://api-satusehat-stg.dto.kemkes.go.id/kfa`,
-		kfa2: `https://api-satusehat-stg.dto.kemkes.go.id/kfa-v2`,
-		kfa3: `https://api-satusehat-stg.dto.kemkes.go.id/kfa-v3`
-	},
-	production: {
-		auth: `https://api-satusehat.kemkes.go.id/oauth2/v1`,
-		fhir: `https://api-satusehat.kemkes.go.id/fhir-r4/v1`,
-		consent: `https://api-satusehat.kemkes.go.id/consent/v1`,
-		kyc: `https://api-satusehat.kemkes.go.id/kyc/v1`,
-		kfa: `https://api-satusehat.kemkes.go.id/kfa`,
-		kfa2: `https://api-satusehat.kemkes.go.id/kfa-v2`,
-		kfa3: `https://api-satusehat.kemkes.go.id/kfa-v3`
-	}
-} as const;
+	<EndpointURL>{}
+);
+
+function buildUrl(base: string, path: string) {
+	// ensure base ends with a slash so it's treated as a directory
+	const normalizedBase = base.endsWith('/') ? base : base + '/';
+
+	/**
+	 * URL constructor params rules
+	 * - base must end with / otherwise it's treated as a file
+	 * - path in input must NOT start with / otherwise it resets the path
+	 */
+	return new URL(path.replace(/^\/+/, ''), normalizedBase);
+}
 
 export default class IHS {
 	private config: Readonly<IHSConfig> | undefined;
@@ -97,7 +100,7 @@ export default class IHS {
 
 	private async applyUserConfig(): Promise<void> {
 		const defaultConfig: Readonly<IHSConfig> = {
-			mode: (process.env['NODE_ENV'] as Mode) || 'development',
+			mode: (process.env['NODE_ENV'] as Mode) || 'sandbox',
 			clientSecret: process.env['IHS_CLIENT_SECRET'] || '',
 			secretKey: process.env['IHS_SECRET_KEY'] || '',
 			kycPemFile: process.env['IHS_KYC_PEM_FILE'] || ''
@@ -107,9 +110,15 @@ export default class IHS {
 			typeof this.userConfig === 'function' ? await this.userConfig() : this.userConfig;
 
 		const mergedConfig = { ...defaultConfig, ...resolveUserConfig };
+
+		if (!(<Mode[]>['sandbox', 'production']).includes(mergedConfig.mode)) {
+			console.warn(`[ihs]: Invalid mode "${mergedConfig.mode}", falling back to "sandbox".`);
+			mergedConfig.mode = 'sandbox';
+		}
+
 		if (!mergedConfig.kycPemFile) {
 			mergedConfig.kycPemFile =
-				mergedConfig.mode === 'development' ? 'publickey.dev.pem' : 'publickey.pem';
+				mergedConfig.mode === 'sandbox' ? 'publickey.sandbox.pem' : 'publickey.pem';
 		}
 		this.config = mergedConfig;
 	}
@@ -140,7 +149,7 @@ export default class IHS {
 	async request(config: RequestConfig): Promise<Response> {
 		const { mode } = await this.getConfig();
 		const { type, path, searchParams, ...init } = config;
-		const url = new URL(defaultBaseUrls[mode][type] + path);
+		const url = buildUrl(defaultEndpointUrls[mode][type], path);
 		url.search = searchParams ? new URLSearchParams(searchParams).toString() : url.search;
 		const auth = await this.auth();
 		init.headers = {
@@ -167,7 +176,7 @@ export default class IHS {
 			throw new Error(message);
 		}
 
-		const url = defaultBaseUrls[mode]['auth'] + '/accesstoken?grant_type=client_credentials';
+		const url = defaultEndpointUrls[mode]['auth'] + '/accesstoken?grant_type=client_credentials';
 		const response = await fetch(url, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

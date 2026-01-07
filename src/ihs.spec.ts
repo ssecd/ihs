@@ -16,8 +16,8 @@ describe('ihs', () => {
 		expect(config.clientSecret).toBeTypeOf('string');
 		expect(config.secretKey).toBeDefined();
 		expect(config.secretKey).toBeTypeOf('string');
-		expect(config.mode).toBe('development');
-		expect(config.kycPemFile).toBe('publickey.dev.pem');
+		expect(config.mode).toBe('sandbox');
+		expect(config.kycPemFile).toBe('publickey.sandbox.pem');
 	});
 
 	it('config should be valid from async config', async () => {
@@ -25,7 +25,7 @@ describe('ihs', () => {
 			clientSecret: 'th3-53cREt',
 			secretKey: 'th3_keY',
 			kycPemFile: 'server-key.pem',
-			mode: 'development'
+			mode: 'sandbox'
 		};
 
 		const ihs = new IHS(async () => {
@@ -38,11 +38,11 @@ describe('ihs', () => {
 		expect(config).toEqual(userConfig);
 	});
 
-	it('config kycPemFile should be valid between development and production', async () => {
+	it('config kycPemFile should be valid between sandbox and production', async () => {
 		const ihsDev = new IHS();
 		const devConfig = await ihsDev.getConfig();
-		expect(devConfig.mode).toBe('development');
-		expect(devConfig.kycPemFile).toBe('publickey.dev.pem');
+		expect(devConfig.mode).toBe('sandbox');
+		expect(devConfig.kycPemFile).toBe('publickey.sandbox.pem');
 
 		const ihsProd = new IHS({ mode: 'production' });
 		const prodConfig = await ihsProd.getConfig();
