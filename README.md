@@ -214,7 +214,7 @@ Setiap method pada API ini memiliki parameter dan nilai kembalian yang di-defini
 
 Proses enkripsi dan dekripsi pesan dilakukan dengan menggunakan algoritma `aes-256-gcm` sedangkan untuk proses enkripsi dan dekripsi _symmetric key_ menggunakan metode RSA dengan `RSA_PKCS1_OAEP_PADDING` padding dan `sha256` hash. Semua proses tersebut sudah dilakukan secara internal sesuai dengan spesifikasi IHS pada Playbook.
 
-Proses kriptografi pada API ini memerlukan file _server key_ atau _public key_ dengan format `.pem`. File _public key_ ini dapat disesuaikan lokasinya dengan mengatur `kycPemFile` pada config instance atau class `IHS` yang secara default bernama `publickey.dev.pem` pada mode `development` atau `publickey.pem` pada mode `production` dan berada di _working directory_ atau folder di mana API dijalankan.
+Proses kriptografi pada API ini memerlukan file _server key_ atau _public key_ dengan format `.pem`. File _public key_ ini dapat disesuaikan lokasinya dengan mengatur `kycPemFile` pada config instance atau class `IHS` yang secara default bernama `publickey.sandbox.pem` pada mode `sandbox` atau `publickey.pem` pada mode `production` dan berada di _working directory_ atau folder di mana API dijalankan.
 
 File _public key_ atau _server key_ dapat di-unduh di [sini](https://github.com/ssecd/ihs/issues/2).
 
@@ -259,9 +259,10 @@ interface IHSConfig {
 	secretKey: string;
 
 	/**
-	 * Mode environment API antara `development`, `staging`, atau `production`
+	 * Mode environment API antara `sandbox` atau `production`,
+	 * `sandbox` secara default
 	 *
-	 * @default process.env.NODE_ENV || 'development'
+	 * @default process.env.NODE_ENV || 'sandbox'
 	 */
 	mode: Mode;
 
@@ -269,7 +270,7 @@ interface IHSConfig {
 	 * Path atau lokasi public key KYC dari SatuSehat. Dapat
 	 * menggunakan absolute atau relative path. Secara default
 	 * akan membaca nilai environment variable IHS_KYC_PEM_FILE
-	 * atau `publickey.dev.pem` pada mode `development` dan
+	 * atau `publickey.sandbox.pem` pada mode `sandbox` dan
 	 * `publickey.pem` pada mode `production`
 	 *
 	 * @default process.env.IHS_KYC_PEM_FILE
