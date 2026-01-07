@@ -44,7 +44,23 @@ export interface IHSConfig {
 type UserConfig = Partial<IHSConfig> | (() => MaybePromise<Partial<IHSConfig>>);
 
 type RequestConfig = {
-	type: Exclude<API, 'auth'>;
+	/**
+	 * Tipe dari RestAPI. Gunakan tipe `base` jika API belum diimplementasikan.
+	 * Contoh:
+	 *
+	 * ```ts
+	 * await ihs.request({
+	 *		type: 'base',
+	 *		path: '/masterdata/v1/mastersaranaindex/mastersarana', // <- include endpoint '/masterdata/v1/'
+	 *		searchParams: {
+	 *			limit: '10',
+	 *			page: '1',
+	 *			jenis_sarana: '121',
+	 *		}
+	 *	})
+	 * ```
+	 */
+	type: 'base' | Exclude<API, 'auth'>;
 	path: string;
 	searchParams?: URLSearchParams | Record<string, string> | [string, string][];
 } & RequestInit;
@@ -149,7 +165,8 @@ export default class IHS {
 	async request(config: RequestConfig): Promise<Response> {
 		const { mode } = await this.getConfig();
 		const { type, path, searchParams, ...init } = config;
-		const url = buildUrl(defaultEndpointUrls[mode][type], path);
+		const baseUrl = type == 'base' ? defaultBaseUrls[mode] : defaultEndpointUrls[mode][type];
+		const url = buildUrl(baseUrl, path);
 		url.search = searchParams ? new URLSearchParams(searchParams).toString() : url.search;
 		const auth = await this.auth();
 		init.headers = {

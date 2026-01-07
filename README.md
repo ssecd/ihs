@@ -241,6 +241,22 @@ if (result2.error) {
 }
 ```
 
+### `ihs.request({ ... })`
+
+Request ke RestAPI secara langsung menggunakan method `request()` dari instansi `IHS`. Sangat berguna saat API atau Endpoint belum diimplementasikan. Contoh:
+
+```ts
+await ihs.request({
+	type: 'base',
+	path: '/masterdata/v1/mastersaranaindex/mastersarana',
+	searchParams: {
+		limit: '10',
+		page: '1',
+		jenis_sarana: '121'
+	}
+});
+```
+
 ## Konfigurasi
 
 Konfigurasi mengikuti interface berikut:

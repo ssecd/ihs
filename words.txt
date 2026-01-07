@@ -16,6 +16,9 @@ kbki
 kemkes
 kriptografi
 lkpp
+masterdata
+mastersarana
+mastersaranaindex
 OAEP
 OPTIN
 OPTOUT
@@ -26,6 +29,7 @@ rxterm
 Silampari
 simrs
 Sriwijaya
+ssecd
 subkategori
 tkdn
 ucum
