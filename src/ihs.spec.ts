@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import IHS, { AuthDetail, DefaultAuthStore, IHSConfig } from './ihs.js';
+import IHS, { AuthDetail, FileAuthStore, IHSConfig, InMemoryAuthStore } from './ihs.js';
 
 let ihs: IHS;
 
@@ -56,8 +56,8 @@ describe('ihs', () => {
 		expect(prodConfig.kycPemFile).toBe('publickey.pem');
 	});
 
-	it('the DefaultAuthStore should store and handle expiration correctly', async () => {
-		const store = new DefaultAuthStore();
+	it('the InMemoryAuthStore should store and handle expiration correctly', async () => {
+		const store = new InMemoryAuthStore();
 		expect(store.get()).toBeFalsy();
 
 		const delay = 1; // seconds
@@ -74,6 +74,27 @@ describe('ihs', () => {
 
 		await new Promise((resolve) => setTimeout(resolve, delay * 1000));
 		expect(store.get()).toBeUndefined();
+	});
+
+	it('the FileAuthStore should store and handle expiration correctly', async () => {
+		const store = new FileAuthStore('./tmp/auth.json');
+		expect(await store.get()).toBeFalsy();
+
+		const delay = 1; // seconds
+		const expiresIn = 3599; // IHS expiration in seconds as this test written
+		const issuedAt = Date.now() - (expiresIn - (store.ANTICIPATION + delay)) * 1000;
+		const authDetail = {
+			issued_at: String(issuedAt),
+			expires_in: String(expiresIn),
+			access_token: 'xyz'
+		} as AuthDetail;
+
+		await store.set(authDetail);
+		expect(await store.get()).toBeDefined();
+		expect(await store.get()).toEqual(authDetail);
+
+		await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+		expect(await store.get()).toBeUndefined();
 	});
 
 	it(`request with base type should be return 200`, async () => {

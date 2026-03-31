@@ -1,3 +1,5 @@
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import { getConsentSingleton } from './consent.js';
 import { getKFASingleton } from './kfa.js';
 import { getKycSingleton } from './kyc.js';
@@ -110,7 +112,7 @@ function buildUrl(base: string, path: string) {
 
 export default class IHS {
 	private config: Readonly<IHSConfig> | undefined;
-	private currentAuthStore: AuthStore = new DefaultAuthStore();
+	private currentAuthStore: AuthStore = new InMemoryAuthStore();
 
 	constructor(private readonly userConfig?: UserConfig) {}
 
@@ -141,7 +143,7 @@ export default class IHS {
 
 	/**
 	 * Atur custom auth store untuk menyimpan atau men-cache auth detail.
-	 * Secara default menggunakan {@link DefaultAuthStore}.
+	 * Secara default menggunakan {@link InMemoryAuthStore}.
 	 */
 	set authStore(store: AuthStore) {
 		this.currentAuthStore = store;
@@ -239,31 +241,14 @@ export default class IHS {
  * Implementasi default dari {@link AuthStore} yang menyimpan auth
  * detail di-cache di cluster/process memory
  */
-export class DefaultAuthStore implements AuthStore {
+export class InMemoryAuthStore implements AuthStore {
 	readonly ANTICIPATION = 300; // seconds
 
 	private authDetail: AuthDetail | undefined;
 
 	get(): AuthDetail | undefined {
-		if (this.authDetail) {
-			const { issued_at, expires_in } = this.authDetail;
-			const issuedAt = parseInt(issued_at, 10);
-			const expiresIn = parseInt(expires_in, 10);
-			if (!issuedAt || !expiresIn) {
-				this.authDetail = undefined;
-				return;
-			}
-
-			// expiration time in milliseconds
-			const expirationTime = issuedAt + expiresIn * 1000;
-
-			// time when the token is considered about to expire
-			const aboutToExpireTime = expirationTime - this.ANTICIPATION * 1000;
-
-			// compare with the current time, if expired set detail to undefined
-			if (aboutToExpireTime <= Date.now()) {
-				this.authDetail = undefined;
-			}
+		if (isAuthTokenExpired(this.authDetail, this.ANTICIPATION)) {
+			return undefined;
 		}
 		return this.authDetail;
 	}
@@ -271,6 +256,73 @@ export class DefaultAuthStore implements AuthStore {
 	set(detail: AuthDetail): void {
 		this.authDetail = detail;
 	}
+}
+
+/**
+ * Implementasi default dari {@link AuthStore} yang menyimpan auth
+ * detail di sebuah file. Perlu diketahui bahwa file berupa file
+ * dengan format json yang tidak di-enkripsi
+ */
+export class FileAuthStore implements AuthStore {
+	readonly ANTICIPATION = 300; // seconds
+	private filePath: string;
+
+	constructor(filePath?: string) {
+		this.filePath = filePath ?? path.join(process.cwd(), 'auth.json');
+	}
+
+	async get() {
+		try {
+			const content = await fs.readFile(this.filePath, 'utf-8');
+			if (!content) return undefined;
+
+			const parsed = JSON.parse(content) as AuthDetail;
+			if (!parsed.access_token) return undefined;
+
+			if (isAuthTokenExpired(parsed, this.ANTICIPATION)) return undefined;
+
+			return parsed;
+		} catch (err) {
+			// file corrupt / JSON invalid / ENOENT
+			console.warn('[FileAuthStore] Failed to read file:', err);
+			return undefined;
+		}
+	}
+
+	async set(detail: AuthDetail) {
+		const dir = path.dirname(this.filePath);
+
+		// pastikan folder ada
+		await fs.mkdir(dir, { recursive: true });
+
+		const tempPath = this.filePath + '.tmp';
+		const data = JSON.stringify(detail, null, 2);
+
+		// write ke file sementara (atomic write pattern)
+		await fs.writeFile(tempPath, data, 'utf-8');
+
+		// lalu rename (atomic di sebagian besar OS)
+		await fs.rename(tempPath, this.filePath);
+	}
+}
+
+export function isAuthTokenExpired(detail?: AuthDetail, anticipation = 300): boolean {
+	if (!detail) return true;
+
+	const issuedAt = parseInt(detail.issued_at, 10);
+	const expiresIn = parseInt(detail.expires_in, 10);
+	if (!issuedAt || !expiresIn) return true;
+
+	// expiration time in milliseconds
+	const expirationTime = issuedAt + expiresIn * 1000;
+
+	// time when the token is considered about to expire
+	const aboutToExpireTime = expirationTime - anticipation * 1000;
+
+	// compare with the current time, if expired set detail to undefined
+	if (aboutToExpireTime <= Date.now()) return true;
+
+	return false;
 }
 
 export interface AuthDetail {
