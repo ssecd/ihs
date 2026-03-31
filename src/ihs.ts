@@ -283,26 +283,64 @@ export class FileAuthStore implements AuthStore {
 
 			return parsed;
 		} catch (err) {
-			// file corrupt / JSON invalid / ENOENT
-			console.warn('[FileAuthStore] Failed to read file:', err);
+			// file corrupt / JSON invalid
+			// @ts-expect-error `.code` is actually exists but not in ErrorConstructor
+			if (err?.code != 'ENOENT') {
+				console.warn('[FileAuthStore] Failed to read file:', err);
+			}
 			return undefined;
 		}
 	}
 
 	async set(detail: AuthDetail) {
 		const dir = path.dirname(this.filePath);
-
-		// pastikan folder ada
 		await fs.mkdir(dir, { recursive: true });
 
 		const tempPath = this.filePath + '.tmp';
 		const data = JSON.stringify(detail, null, 2);
 
-		// write ke file sementara (atomic write pattern)
-		await fs.writeFile(tempPath, data, 'utf-8');
+		let fd: fs.FileHandle | undefined;
 
-		// lalu rename (atomic di sebagian besar OS)
-		await fs.rename(tempPath, this.filePath);
+		try {
+			// open temp file with secure permissions
+			fd = await fs.open(tempPath, 'w', 0o600);
+
+			// write data
+			await fd.writeFile(data, 'utf-8');
+
+			// flush file contents to disk
+			await fd.sync();
+
+			// close before rename (important on Windows)
+			await fd.close();
+			fd = undefined;
+
+			// atomic rename
+			await fs.rename(tempPath, this.filePath);
+
+			// fsync directory (ensure rename is durable)
+			const dirFd = await fs.open(dir, 'r');
+			try {
+				await dirFd.sync();
+			} finally {
+				await dirFd.close();
+			}
+		} catch (err) {
+			// cleanup temp file if anything fails
+			try {
+				if (fd) await fd.close();
+			} catch {
+				/** do nothing */
+			}
+
+			try {
+				await fs.unlink(tempPath);
+			} catch {
+				/** do nothing */
+			}
+
+			throw err;
+		}
 	}
 }
 
